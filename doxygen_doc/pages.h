@@ -236,7 +236,7 @@
  */
  /*! @page iuse::camera
  *  @brief Talking about the Camera and related functions
- *  @par The Camera iuse and its related functions, which arguably ecompasses anything regarding photographs (not including morale photos)
+ *  @par The Camera iuse and its related functions, which arguably encompasses anything regarding photographs (not including morale photos)
  * is probably the most convoluted and complex section of the item iuse.
  * It relies on a number of separately defined functions declared within iuse.cpp, and goes through an admirable amount of work to
  * create its photos, acounting for camera focus issues, the player being blinded, photobombing by monsters, excessive amounts of items
@@ -246,3 +246,12 @@
  * This appears to necessitate far more code than the extended photos, which can be updated properly in potentially as little as 4 lines
  */
  /*! @page iuse::remove_duplicate_photos
+ *  @brief Prevents duplicate photos from being created.
+ *  @par This had to be created to prevent infinite photocopying from the download/upload functions.
+ * I believe the issue started because the original camera function was very concrete in its flow and would remove photos on copying.
+ * It works by making 3 empty vectors of photos. the first gets to hold a copy of the photos to be checked.
+ * One by one it goes through the starting collection, comparing the strings of the photo contents.
+ * If it doesn't find a matching string in the initially empty 2nd vector, it puts a copy there, and another copy in the 3rd vector.
+ * Once it has run through every photo in the first vector, it overwrites the source variable of photos with its checked list.
+ */
+ 

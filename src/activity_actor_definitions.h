@@ -276,14 +276,14 @@ class bookbinder_copy_activity_actor: public activity_actor
         static std::unique_ptr<activity_actor> deserialize( JsonValue &jsin );
 };
 
-class data_handling_activity_actor: public activity_actor
+class data_dnload_activity_actor: public activity_actor
 {
     public:
-        explicit data_handling_activity_actor() = default;
-        explicit data_handling_activity_actor( const item_location &, const std::vector<item_location> & );
+        explicit data_dnload_activity_actor() = default;
+        explicit data_dnload_activity_actor( const item_location &, const std::vector<item_location> & );
 
         activity_id get_type() const override {
-            return activity_id( "ACT_DATA_HANDLING" );
+            return activity_id( "ACT_DATA_DNLOAD" );
         }
 
         bool can_resume_with_internal( const activity_actor &, const Character & ) const override {
@@ -296,7 +296,7 @@ class data_handling_activity_actor: public activity_actor
         void canceled( player_activity &, Character & ) override;
 
         std::unique_ptr<activity_actor> clone() const override {
-            return std::make_unique<data_handling_activity_actor>( *this );
+            return std::make_unique<data_dnload_activity_actor>( *this );
         }
 
         void serialize( JsonOut & ) const override;
@@ -311,6 +311,7 @@ class data_handling_activity_actor: public activity_actor
         int downloaded_photos = 0;
         int downloaded_songs = 0;
         std::vector<recipe_id> downloaded_recipes;
+		int downloaded_books = 0;
         int downloaded_extended_photos = 0;
         int downloaded_monster_photos = 0;
 };

@@ -2556,5 +2556,50 @@
     "id": "WATERWALKING",
     "type": "json_flag",
     "info": "You can walk across the surface of water."
+  },
+  {
+    "id": "EI_PHOTO_F",
+    "type": "json_flag",
+    "info": "Device supports found photos."
+  },
+  {
+    "id": "EI_PHOTO_E",
+    "type": "json_flag",
+    "info": "Device supports camera photos."
+  },
+  {
+    "id": "EI_PHOTO_M",
+    "type": "json_flag",
+    "info": "Device supports monster photos."
+  },
+  {
+    "id": "EI_RECIPE",
+    "type": "json_flag",
+    "info": "Device supports found photos."
+  },
+  {
+    "id": "EI_MUSIC",
+    "type": "json_flag",
+    "info": "Device supports found music."
+  },
+  {
+    "id": "EI_BOOK",
+    "type": "json_flag",
+    "info": "Device supports eBooks."
+  },
+  {
+    "id": "EI_UPLOAD",
+    "type": "json_flag",
+    "info": "Device supports uploading."
+  },
+  {
+    "id": "EI_DNLOAD",
+    "type": "json_flag",
+    "info": "Device supports downloading."
+  },
+  {
+    "id": "EI_CHECK",
+    "type": "json_flag",
+    "info": "Device supports scanning memory cards."
   }
 ]

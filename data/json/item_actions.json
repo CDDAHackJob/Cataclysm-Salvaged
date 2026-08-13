@@ -287,7 +287,7 @@
   {
     "type": "item_action",
     "id": "CAMERA",
-    "name": { "str": "Use camera" }
+    "name": { "str": "Take a photo" }
   },
   {
     "type": "item_action",
@@ -376,8 +376,13 @@
   },
   {
     "type": "item_action",
-    "id": "EINKTABLETPC",
-    "name": { "str": "Use SD-Card apps" }
+    "id": "EMOVEDATA",
+    "name": { "str": "Manage/Move data" }
+  },
+  {
+    "type": "item_action",
+    "id": "ESTORAGE",
+    "name": { "str": "View stored data" }
   },
   {
     "type": "item_action",

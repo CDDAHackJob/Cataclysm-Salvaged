@@ -980,8 +980,9 @@
     "rooted": true,
     "based_on": "speed"
   },
+
   {
-    "id": "ACT_DATA_HANDLING",
+    "id": "ACT_DATA_DNLOAD",
     "type": "activity_type",
     "activity_level": "NO_EXERCISE",
     "verb": "downloading data",

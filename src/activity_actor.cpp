@@ -125,7 +125,7 @@ static const activity_id ACT_CONSUME( "ACT_CONSUME" );
 static const activity_id ACT_CONSUME_MEDS_MENU( "ACT_CONSUME_MEDS_MENU" );
 static const activity_id ACT_CRACKING( "ACT_CRACKING" );
 static const activity_id ACT_CRAFT( "ACT_CRAFT" );
-static const activity_id ACT_DATA_HANDLING( "ACT_DATA_HANDLING" );
+static const activity_id ACT_DATA_DNLOAD( "ACT_DATA_DNLOAD" );
 static const activity_id ACT_DISABLE( "ACT_DISABLE" );
 static const activity_id ACT_DISASSEMBLE( "ACT_DISASSEMBLE" );
 static const activity_id ACT_DROP( "ACT_DROP" );
@@ -992,27 +992,16 @@ std::unique_ptr<activity_actor> bookbinder_copy_activity_actor::deserialize( Jso
     return actor.clone();
 }
 
-data_handling_activity_actor::data_handling_activity_actor(
+data_dnload_activity_actor::data_dnload_activity_actor(
     const item_location &recorder, const std::vector<item_location> &targets )
     : recorder( recorder ), targets( targets ) {}
 
-static int get_quality_from_string( const std::string_view s )
-{
-    const ret_val<int> try_quality = try_parse_integer<int>( s, false );
-    if( try_quality.success() ) {
-        return try_quality.value();
-    } else {
-        debugmsg( "Error parsing photo quality: %s", try_quality.str() );
-        return 0;
-    }
-}
-
-void data_handling_activity_actor::start( player_activity &act, Character & )
+void data_dnload_activity_actor::start( player_activity &act, Character & )
 {
     act.moves_left = act.moves_total = targets.size() * to_moves<int>( time_per_card );
 }
 
-void data_handling_activity_actor::do_turn( player_activity &act, Character &p )
+void data_dnload_activity_actor::do_turn( player_activity &act, Character &p )
 {
     if( !recorder || !recorder->ammo_sufficient( &p ) ) {
         p.cancel_activity();
@@ -1026,89 +1015,141 @@ void data_handling_activity_actor::do_turn( player_activity &act, Character &p )
     if( time_until_next_card > 0_seconds ) {
         return; // not yet
     }
-    item &eink = *recorder;
-    item &mc = *targets.back();
-    targets.pop_back();
-    if( targets.empty() ) {
-        act.moves_left = 0;
+    item &dnload = *recorder;
+    item &mc = *targets.back();		//grab the last entry in the vector
+    targets.pop_back();				//remove that entry from the vector
+    if( targets.empty() ) {			//check if the vector is now empty
+        act.moves_left = 0;			//set this as the last turn if empty
     }
     time_until_next_card = time_per_card;
     handled_cards++;
 
-    if( mc.has_var( "MC_EXTENDED_PHOTOS" ) ) {
-        std::vector<item::extended_photo_def> extended_photos;
-        try {
-            mc.read_extended_photos( extended_photos, "MC_EXTENDED_PHOTOS", false );
-            eink.read_extended_photos( extended_photos, "EIPC_EXTENDED_PHOTOS", true );
-            eink.write_extended_photos( extended_photos, "EIPC_EXTENDED_PHOTOS" );
-            downloaded_extended_photos++;
-        } catch( const JsonError &e ) {
-            debugmsg( "Error card reading photos (loaded photos = %i) : %s", extended_photos.size(),
-                      e.c_str() );
-        }
-    }
-
-    const std::string monster_photos = mc.get_var( "MC_MONSTER_PHOTOS" );
-    if( !monster_photos.empty() ) {
-        downloaded_monster_photos++;
-        std::string photos = eink.get_var( "EINK_MONSTER_PHOTOS" );
-        if( photos.empty() ) {
-            eink.set_var( "EINK_MONSTER_PHOTOS", monster_photos );
-        } else {
-            std::istringstream f( monster_photos );
-            std::string s;
-            while( getline( f, s, ',' ) ) {
-                if( s.empty() ) {
-                    continue;
-                }
-                const std::string mtype = s;
-                getline( f, s, ',' );
-                const int quality = get_quality_from_string( s );
-
-                const size_t eink_strpos = photos.find( "," + mtype + "," );
-
-                if( eink_strpos == std::string::npos ) {
-                    photos += mtype + "," + string_format( "%d", quality ) + ",";
-                } else {
-                    const size_t strqpos = eink_strpos + mtype.size() + 2;
-                    const size_t next_comma = photos.find( ',', strqpos );
-                    const int old_quality =
-                        get_quality_from_string( photos.substr( strqpos, next_comma ) );
-
-                    if( quality > old_quality ) {
-                        const std::string quality_s = string_format( "%d", quality );
-                        cata_assert( quality_s.size() == 1 );
-                        photos[strqpos] = quality_s.front();
-                    }
-                }
-
-            }
-            eink.set_var( "EINK_MONSTER_PHOTOS", photos );
-        }
-    }
+	if( dnload.has_flag( flag_EI_PHOTO_E ) ) { 
+		if( mc.has_var( "EI_EXTENDED_PHOTOS" ) ) {
+			std::vector<item::extended_photo_def> extended_photos;							//make a vector for extended photos
+			try {																			//the following avoids copies of photos
+				mc.read_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS", false );	//read the memory card's photos into the vector
+				dnload.read_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS", true );	//read the device's photos into the vector
+				dnload.write_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS" );		//write the vector into the device as the EIPC_EXTENDED_PHOTOS var
+				downloaded_extended_photos++;
+			} catch( const JsonError &e ) {
+				debugmsg( "Error card reading photos (loaded photos = %i) : %s", extended_photos.size(),
+						e.c_str() );
+			}
+		}
+	}
+	
+	//this is to catch legacy data, also useful for testing estorage's recovery function
+	if( dnload.has_flag( flag_EI_PHOTO_E ) ) { 
+		if( mc.has_var( "MC_EXTENDED_PHOTOS" ) ) {
+			std::vector<item::extended_photo_def> extended_photos;
+			try {
+				mc.read_extended_photos( extended_photos, "MC_EXTENDED_PHOTOS", false );
+				dnload.read_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS", true );
+				dnload.write_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS" );
+				downloaded_extended_photos++;
+			} catch( const JsonError &e ) {
+				debugmsg( "Error card reading photos (loaded photos = %i) : %s", extended_photos.size(),
+						e.c_str() );
+			}
+		}
+	}
+	
+	if( dnload.has_flag( flag_EI_PHOTO_M ) ) { 
+		if( !mc.get_var( "EI_MONSTER_PHOTOS" ).empty() ||
+			!mc.get_var( "MC_MONSTER_PHOTOS" ).empty() ) {
+			downloaded_monster_photos++;
+			dnload.set_var( "EI_MONSTER_PHOTOS", iuse::update_monsters( dnload.get_var( "EI_MONSTER_PHOTOS" ), mc.get_var( "EI_MONSTER_PHOTOS" ) ) );
+			dnload.set_var( "EI_MONSTER_PHOTOS", iuse::update_monsters( dnload.get_var( "EI_MONSTER_PHOTOS" ), mc.get_var( "MC_MONSTER_PHOTOS" ) ) );
+		}
+	}
+	
+	if( dnload.has_flag( flag_EI_PHOTO_F ) ) { 
+		if( !mc.get_var( "EI_PHOTOS" ).empty() ) {
+			const int found_photos = (mc.get_var( "EI_PHOTOS", 0 ) );
+			dnload.set_var( "EI_PHOTOS", dnload.get_var( "EI_PHOTOS", 0 ) + found_photos );
+			downloaded_photos += found_photos;
+			mc.erase_var( "EI_PHOTOS" );
+		} //erase vars to prevent duplication of photos/songs
+	}
+	if( dnload.has_flag( flag_EI_MUSIC ) ) { 
+		if( !mc.get_var( "EI_MUSIC" ).empty() ) {
+			const int found_music = mc.get_var( "EI_MUSIC", 0 );
+			dnload.set_var( "EI_MUSIC", dnload.get_var( "EI_MUSIC", 0 ) + found_music );
+			downloaded_songs += found_music;
+			mc.erase_var( "EI_MUSIC" );
+		}
+	}
+	if( dnload.has_flag( flag_EI_RECIPE ) ) { 
+		if( !mc.get_saved_recipes().empty() ) {
+			std::set<recipe_id> found_recipes = mc.get_saved_recipes();
+			std::set<recipe_id> saved_recipes = dnload.get_saved_recipes();
+			if( saved_recipes.empty() ) {
+				dnload.set_saved_recipes( found_recipes );
+			} else {
+				const int rnum = found_recipes.size();
+				for( int i = 0; i < rnum && !found_recipes.empty(); i++ ) {
+					const recipe_id rid = random_entry_removed( found_recipes );
+					if( saved_recipes.emplace( rid ).second ) {
+						downloaded_recipes.emplace_back( rid );
+					}
+				}
+				dnload.set_saved_recipes( saved_recipes );
+			}
+		}
+	}
+	if( dnload.has_flag( flag_EI_BOOK ) ) { 
+		if( !mc.ebooks().empty() ) {
+			std::vector<const item *> dif_set;
+			std::set<itype_id> existing_ebooks;
+			for( const item *ebook : dnload.ebooks() )
+			{
+				existing_ebooks.insert( ebook->typeId() );
+			}
+			std::vector<const item *> ebooks;
+			for( const item *ebook : mc.ebooks() )
+			{
+				if( existing_ebooks.count( ebook->typeId() ) ) {
+					continue;
+				}
+				ebooks.emplace_back( ebook );
+			}
+			for ( const item *ebook : ebooks ) {
+				dnload.put_in( *ebook, pocket_type::EBOOK );
+				downloaded_books++;
+			}
+		}
+	}
+	//covers the unread memory cards
     const memory_card_info *mmd = mc.type->memory_card_data ? &*mc.type->memory_card_data : nullptr;
     const bool failed_encrypted = mmd && mmd->data_chance < rng_float( 0.0, 1.0 );
-    if( mmd && mmd->on_read_convert_to.is_valid() ) {
-        mc.clear_vars();
-        mc.unset_flags();
-        mc.convert( mmd->on_read_convert_to );
-    } // mc is invalid past this point
+	bool partial = false;
     if( !mmd || failed_encrypted ) {
         encrypted_cards += failed_encrypted ? 1 : 0;
         return;
     }
     if( mmd->photos_chance >= rng_float( 0.0, 1.0 ) ) {
         const int new_photos = rng( 1, mmd->photos_amount );
-        eink.set_var( "EIPC_PHOTOS", eink.get_var( "EIPC_PHOTOS", 0 ) + new_photos );
-        downloaded_photos += new_photos;
+		if( dnload.has_flag( flag_EI_PHOTO_F ) ) { 
+			dnload.set_var( "EI_PHOTOS", dnload.get_var( "EI_PHOTOS", 0 ) + new_photos );
+			downloaded_photos += new_photos;
+		} else {
+			partial = true;
+			mc.set_var( "EI_PHOTOS", new_photos );
+		}
     }
     if( mmd->songs_chance >= rng_float( 0.0, 1.0 ) ) {
         const int new_songs = rng( 1, mmd->songs_amount );
-        eink.set_var( "EIPC_MUSIC", eink.get_var( "EIPC_MUSIC", 0 ) + new_songs );
-        downloaded_songs += new_songs;
+		if( dnload.has_flag( flag_EI_PHOTO_F ) ) { 
+			dnload.set_var( "EI_MUSIC", dnload.get_var( "EI_MUSIC", 0 ) + new_songs );
+			downloaded_songs += new_songs;
+		} else {
+			partial = true;
+			mc.set_var( "EI_MUSIC", new_songs );
+		}
     }
     if( mmd->recipes_chance >= rng_float( 0.0, 1.0 ) ) {
-        std::set<recipe_id> saved_recipes = eink.get_saved_recipes();
+        std::set<recipe_id> saved_recipes = dnload.get_saved_recipes();
         std::set<recipe_id> candidates;
         for( const auto& [rid, r] : recipe_dict ) {
             if( r.never_learn || r.obsolete || mmd->recipes_categories.count( r.category ) == 0 ||
@@ -1123,17 +1164,30 @@ void data_handling_activity_actor::do_turn( player_activity &act, Character &p )
         const int recipe_num = rng( 1, mmd->recipes_amount );
         for( int i = 0; i < recipe_num && !candidates.empty(); i++ ) {
             const recipe_id rid = random_entry_removed( candidates );
-            if( saved_recipes.emplace( rid ).second ) {
+            if( saved_recipes.emplace( rid ).second && dnload.has_flag( flag_EI_RECIPE ) ) {
                 downloaded_recipes.emplace_back( rid );
-            } else {
-                debugmsg( "failed saving '%s' to '%s'", rid.str(), eink.display_name() );
             }
         }
-        eink.set_saved_recipes( saved_recipes );
+		if( dnload.has_flag( flag_EI_RECIPE ) ) { 
+			dnload.set_saved_recipes( saved_recipes );
+		} else {
+			partial = true;
+			mc.set_saved_recipes( saved_recipes );
+		}
+		
     }
+	if( mmd && mmd->on_read_convert_to.is_valid() ) {
+		if ( !partial ) {
+			mc.clear_vars();
+			mc.unset_flags();
+		} else {
+			mc.set_flag( flag_MC_HAS_DATA );
+		}
+        mc.convert( mmd->on_read_convert_to );
+    } // mc is invalid past this point
 }
 
-static void print_data_handling_tally( Character &who, int encrypted_cards, int photos, int songs,
+static void print_data_dnload_tally( Character &who, int encrypted_cards, int photos, int songs, int books,
                                        const std::vector<recipe_id> &recipes, int extended_photos, int monster_photos )
 {
     if( !recipes.empty() ) {
@@ -1161,30 +1215,34 @@ static void print_data_handling_tally( Character &who, int encrypted_cards, int 
         who.add_msg_if_player( m_good, _( "Downloaded %d new %s." ),
                                songs, n_gettext( "song", "songs", songs ) );
     }
-    if( !( photos || songs || monster_photos || extended_photos || !recipes.empty() ) ) {
-        who.add_msg_if_player( m_warning, _( "No new data has been discovered." ) );
+	if( books > 0 && who.is_avatar() ) {
+        who.add_msg_if_player( m_good, _( "Downloaded %d new %s." ),
+                               books, n_gettext( "book", "books", books ) );
+    }
+    if( !( photos || songs || monster_photos || extended_photos || books || !recipes.empty() ) ) {
+        who.add_msg_if_player( m_warning, _( "No other data has been discovered." ) );
     }
 }
 
-void data_handling_activity_actor::canceled( player_activity &act, Character &p )
+void data_dnload_activity_actor::canceled( player_activity &act, Character &p )
 {
-    print_data_handling_tally( p, encrypted_cards, downloaded_photos, downloaded_songs,
+    print_data_dnload_tally( p, encrypted_cards, downloaded_photos, downloaded_songs, downloaded_books,
                                downloaded_recipes, downloaded_extended_photos, downloaded_monster_photos );
     p.add_msg_if_player( m_info, _( "You stop downloading data after %d %s." ),
                          handled_cards, n_gettext( "card", "cards", handled_cards ) );
     act.set_to_null();
 }
 
-void data_handling_activity_actor::finish( player_activity &act, Character &p )
+void data_dnload_activity_actor::finish( player_activity &act, Character &p )
 {
-    print_data_handling_tally( p, encrypted_cards, downloaded_photos, downloaded_songs,
+    print_data_dnload_tally( p, encrypted_cards, downloaded_photos, downloaded_songs, downloaded_books,
                                downloaded_recipes, downloaded_extended_photos, downloaded_monster_photos );
     p.add_msg_if_player( m_info, _( "You finish downloading data from %d %s." ),
                          handled_cards, n_gettext( "card", "cards", handled_cards ) );
     act.set_to_null();
 }
 
-void data_handling_activity_actor::serialize( JsonOut &jsout ) const
+void data_dnload_activity_actor::serialize( JsonOut &jsout ) const
 {
     jsout.start_object();
     jsout.member( "recorder", recorder );
@@ -1195,14 +1253,15 @@ void data_handling_activity_actor::serialize( JsonOut &jsout ) const
     jsout.member( "downloaded_photos", downloaded_photos );
     jsout.member( "downloaded_songs", downloaded_songs );
     jsout.member( "downloaded_recipes", downloaded_recipes );
+	jsout.member( "downloaded_books", downloaded_books );
     jsout.member( "downloaded_extended_photos", downloaded_extended_photos );
     jsout.member( "downloaded_monster_photos", downloaded_monster_photos );
     jsout.end_object();
 }
 
-std::unique_ptr<activity_actor> data_handling_activity_actor::deserialize( JsonValue &jsin )
+std::unique_ptr<activity_actor> data_dnload_activity_actor::deserialize( JsonValue &jsin )
 {
-    data_handling_activity_actor actor;
+    data_dnload_activity_actor actor;
     JsonObject jsobj = jsin.get_object();
     jsobj.read( "recorder", actor.recorder );
     jsobj.read( "targets", actor.targets );
@@ -1212,6 +1271,7 @@ std::unique_ptr<activity_actor> data_handling_activity_actor::deserialize( JsonV
     jsobj.read( "downloaded_photos", actor.downloaded_photos );
     jsobj.read( "downloaded_songs", actor.downloaded_songs );
     jsobj.read( "downloaded_recipes", actor.downloaded_recipes );
+	jsobj.read( "downloaded_books", actor.downloaded_books );
     jsobj.read( "downloaded_extended_photos", actor.downloaded_extended_photos );
     jsobj.read( "downloaded_monster_photos", actor.downloaded_monster_photos );
     return actor.clone();
@@ -8163,7 +8223,7 @@ deserialize_functions = {
     { ACT_CONSUME, &consume_activity_actor::deserialize },
     { ACT_CRACKING, &safecracking_activity_actor::deserialize },
     { ACT_CRAFT, &craft_activity_actor::deserialize },
-    { ACT_DATA_HANDLING, &data_handling_activity_actor::deserialize },
+    { ACT_DATA_DNLOAD, &data_dnload_activity_actor::deserialize },
     { ACT_DISABLE, &disable_activity_actor::deserialize },
     { ACT_DISASSEMBLE, &disassemble_activity_actor::deserialize },
     { ACT_DROP, &drop_activity_actor::deserialize },

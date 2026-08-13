@@ -1907,6 +1907,15 @@ std::vector<const item *> item_contents::ebooks() const
     return ebooks;
 }
 
+void item_contents::clear_ebooks()
+{
+    for( item_pocket &pocket : contents ) {
+        if( pocket.is_type( pocket_type::EBOOK ) ) {
+            pocket.clear_items();
+        }
+    }
+}
+
 std::vector<item *> item_contents::cables()
 {
     std::vector<item *> cables;

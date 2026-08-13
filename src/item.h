@@ -2612,6 +2612,8 @@ class item : public visitable
         std::vector<const item *> softwares() const;
 
         std::vector<const item *> ebooks() const;
+		
+		void clear_ebooks();
 
         std::vector<const item *> cables() const;
 

@@ -149,6 +149,7 @@ class item_contents
 
         std::vector<item *> ebooks();
         std::vector<const item *> ebooks() const;
+		void clear_ebooks();
 
         std::vector<item *> cables();
         std::vector<const item *> cables() const;

@@ -11387,6 +11387,11 @@ std::vector<const item *> item::ebooks() const
     return contents.ebooks();
 }
 
+void item::clear_ebooks()
+{
+	contents.clear_ebooks();
+}
+
 std::vector<const item *> item::cables() const
 {
     return contents.cables();

@@ -12,9 +12,9 @@
     "symbol": ";",
     "color": "yellow",
     "ammo": [ "battery" ],
-    "flags": [ "NO_UNLOAD", "NO_RELOAD", "WATER_BREAK_ACTIVE", "ELECTRONIC" ],
+    "flags": [ "NO_UNLOAD", "NO_RELOAD", "WATER_BREAK_ACTIVE", "ELECTRONIC", "EI_PHOTO_E", "EI_PHOTO_M", "EI_UPLOAD" ],
     "charges_per_use": 1,
-    "use_action": [ "CAMERA" ],
+    "use_action": [ "CAMERA", "EMOVEDATA", "ESTORAGE" ],
     "//": "swappable, but proprietary 80g Li-Ion battery",
     "pocket_data": [ { "pocket_type": "MAGAZINE", "rigid": true, "ammo_restriction": { "battery": 50 } } ],
     "melee_damage": { "bash": 1 }
@@ -33,8 +33,8 @@
     "color": "yellow",
     "ammo": [ "battery" ],
     "charges_per_use": 5,
-    "use_action": [ "CAMERA" ],
-    "flags": [ "NO_UNLOAD", "NO_RELOAD", "CAMERA_PRO", "ALWAYS_TWOHAND", "WATER_BREAK_ACTIVE", "ELECTRONIC" ],
+    "use_action": [ "CAMERA", "EMOVEDATA", "ESTORAGE" ],
+    "flags": [ "NO_UNLOAD", "NO_RELOAD", "CAMERA_PRO", "ALWAYS_TWOHAND", "WATER_BREAK_ACTIVE", "ELECTRONIC", "EI_PHOTO_E", "EI_PHOTO_M", "EI_UPLOAD", "EI_DNLOAD" ],
     "//": "swappable, but proprietary 160g Li-Ion battery",
     "pocket_data": [ { "pocket_type": "MAGAZINE", "rigid": true, "ammo_restriction": { "battery": 100 } } ],
     "melee_damage": { "bash": 1 }
@@ -136,8 +136,9 @@
     "ammo": [ "battery" ],
     "charges_per_use": 1,
     "use_action": [
-      "EINKTABLETPC",
-      "ELECTRICSTORAGE",
+      "EMOVEDATA",
+      "ESTORAGE",
+      "EBOOKSAVE",
       "EBOOKREAD",
       {
         "type": "transform",
@@ -150,7 +151,8 @@
       },
       { "type": "link_up", "cable_length": 4, "charge_rate": "10 W" }
     ],
-    "flags": [ "NO_UNLOAD", "NO_RELOAD", "WATCH", "WATER_BREAK", "ELECTRONIC" ],
+    "flags": [ "NO_UNLOAD", "NO_RELOAD", "WATCH", "WATER_BREAK", "ELECTRONIC", "EI_DNLOAD", "EI_UPLOAD",
+	           "EI_BOOK", "EI_RECIPE", "EI_PHOTO_E", "EI_PHOTO_M", "EI_PHOTO_F", "EI_MUSIC" ],
     "pocket_data": [
       { "pocket_type": "MAGAZINE", "rigid": true, "ammo_restriction": { "battery": 85 } },
       {
@@ -170,8 +172,9 @@
     "power_draw": "2 W",
     "revert_to": "eink_tablet_pc",
     "use_action": [
-      "EINKTABLETPC",
-      "ELECTRICSTORAGE",
+      "EMOVEDATA"
+      "ESTORAGE",
+      "EBOOKSAVE",
       "EBOOKREAD",
       {
         "ammo_scale": 0,
@@ -354,10 +357,10 @@
     "ammo": [ "battery" ],
     "charges_per_use": 1,
     "use_action": [
-      "EINKTABLETPC",
+      "EMOVEDATA"
+      "ESTORAGE",
       "EBOOKSAVE",
       "EBOOKREAD",
-      "ELECTRICSTORAGE",
       "PORTABLE_GAME",
       {
         "type": "effect_on_conditions",
@@ -376,7 +379,8 @@
       },
       { "type": "link_up", "cable_length": 5, "charge_rate": "140 W" }
     ],
-    "flags": [ "NO_UNLOAD", "NO_RELOAD", "WATCH", "WATER_BREAK", "ELECTRONIC", "ALLOWS_REMOTE_USE" ],
+    "flags": [ "NO_UNLOAD", "NO_RELOAD", "WATCH", "WATER_BREAK", "ELECTRONIC", "ALLOWS_REMOTE_USE",
+               "EI_PHOTO_E", "EI_PHOTO_F", "EI_PHOTO_M", "EI_RECIPE", "EI_BOOK", "EI_MUSIC", "EI_UPLOAD", "EI_DNLOAD", "EI_CHECK" ],
     "pocket_data": [
       { "pocket_type": "MAGAZINE", "rigid": true, "ammo_restriction": { "battery": 200 } },
       {
@@ -397,10 +401,10 @@
     "power_draw": "1 W",
     "revert_to": "laptop",
     "use_action": [
-      "EINKTABLETPC",
+      "EMOVEDATA",
+	  "ESTORAGE",
       "EBOOKSAVE",
       "EBOOKREAD",
-      "ELECTRICSTORAGE",
       "PORTABLE_GAME",
       {
         "type": "effect_on_conditions",
@@ -599,8 +603,8 @@
       "MP3",
       "CALORIES_INTAKE_TRACKER",
       "PORTABLE_GAME",
-      "EINKTABLETPC",
-      "ELECTRICSTORAGE",
+      "EMOVEDATA",
+      "ESTORAGE",
       "EBOOKSAVE",
       "EBOOKREAD",
       {
@@ -620,7 +624,8 @@
       },
       { "type": "link_up", "cable_length": 3, "charge_rate": "20 W" }
     ],
-    "flags": [ "WATCH", "ALARMCLOCK", "USE_UPS", "NO_UNLOAD", "NO_RELOAD", "WATER_BREAK", "CALORIES_INTAKE", "ELECTRONIC" ],
+    "flags": [ "WATCH", "ALARMCLOCK", "USE_UPS", "NO_UNLOAD", "NO_RELOAD", "WATER_BREAK", "CALORIES_INTAKE", "ELECTRONIC", 
+	           "EI_PHOTO_E", "EI_PHOTO_F", "EI_PHOTO_M", "EI_RECIPE", "EI_BOOK", "EI_MUSIC", "EI_UPLOAD", "EI_DNLOAD", "EI_CHECK" ],
     "pocket_data": [
       { "pocket_type": "MAGAZINE", "rigid": true, "ammo_restriction": { "battery": 56 } },
       {
@@ -641,9 +646,12 @@
     "power_draw": "300 mW",
     "revert_to": "smart_phone",
     "use_action": [
+      "CAMERA",
       "MP3_DEACTIVATE",
+      "CALORIES_INTAKE_TRACKER",
       "PORTABLE_GAME",
-      "EINKTABLETPC",
+      "EMOVEDATA",
+      "ESTORAGE",
       "EBOOKSAVE",
       "EBOOKREAD",
       { "type": "link_up", "cable_length": 3, "charge_rate": "20 W" }
@@ -659,8 +667,12 @@
     "power_draw": "1500 mW",
     "revert_to": "smart_phone",
     "use_action": [
+      "CAMERA",
+      "MP3",
+      "CALORIES_INTAKE_TRACKER",
       "PORTABLE_GAME",
-      "EINKTABLETPC",
+      "EMOVEDATA",
+      "ESTORAGE",
       "EBOOKSAVE",
       "EBOOKREAD",
       {

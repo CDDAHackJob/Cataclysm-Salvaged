@@ -103,8 +103,9 @@ std::optional<int> dog_whistle( Character *, item *, const tripoint & );
 std::optional<int> ehandcuffs( Character *, item *, const tripoint & );
 std::optional<int> ehandcuffs_tick( Character *, item *, const tripoint & );
 std::optional<int> epic_music( Character *, item *, const tripoint & );
-std::optional<int> einktabletpc( Character *, item *, const tripoint & );
 std::optional<int> emf_passive_on( Character *, item *, const tripoint & );
+std::optional<int> emovedata( Character *, item *, const tripoint & );
+std::optional<int> estorage( Character *, item *, const tripoint & );
 std::optional<int> extinguisher( Character *, item *, const tripoint & );
 std::optional<int> fill_pit( Character *, item *, const tripoint & );
 std::optional<int> firecracker( Character *, item *, const tripoint & );
@@ -227,6 +228,10 @@ void cut_log_into_planks( Character & );
 void play_music( Character *p, const tripoint &source, int volume, int max_morale );
 std::optional<int> purify_water( Character *p, item *purifier, item_location &water );
 int towel_common( Character *, item *, bool );
+/** Reads an items var and removes duplicate extended photos */
+void remove_duplicate_photos( item *it, const std::string &var_name );
+/** takes in two strings of monster photos, checks the second string against the first, returning an updated version of the first string */
+std::string update_monsters( std::string old_mons, std::string new_mons );
 
 // Helper for validating a potential target of robot control
 bool robotcontrol_can_target( Character *, const monster & );

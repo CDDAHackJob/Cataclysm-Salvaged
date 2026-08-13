@@ -253,5 +253,6 @@
  * One by one it goes through the starting collection, comparing the strings of the photo contents.
  * If it doesn't find a matching string in the initially empty 2nd vector, it puts a copy there, and another copy in the 3rd vector.
  * Once it has run through every photo in the first vector, it overwrites the source variable of photos with its checked list.
+ * @author HackJob
  */
  

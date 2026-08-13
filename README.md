@@ -1,7 +1,14 @@
-# Cataclysm: Dark Days Ahead
+# Cataclysm: Dark Days Ahead - Salvaged Edition
 
 Cataclysm: Dark Days Ahead is a turn-based survival game set in a post-apocalyptic world. While some have described it as a "zombie game", there is far more to Cataclysm than that. Struggle to survive in a harsh, persistent, procedurally generated world. Scavenge the remnants of a dead civilization for food, equipment, or, if you are lucky, a vehicle with a full tank of gas to get you the hell out of Dodge. Fight to defeat or escape from a wide variety of powerful monstrosities, from zombies to giant insects to killer robots and things far stranger and deadlier, and against the others like yourself, who want what you have...
-
+# Salvaged
+<p align="center">
+    This world is a dark and ruined place; its no longer about what great things may be built by others.
+</p>
+<p align="center">
+    Its about what you can salvage and personally hold on to.
+</p>
+This build is a personal project to salvage what I can from an experimental fork from september 9th, 2024. I originally was looking to be a contributor and hoped to make my mark by straightening out a section of neglected and buggy code nobody but me cared about. And when I was done I found CleverRaven was in the middle of tearing out all sorts of stuff... including what I had gone to fix. Put me off trying anything for a while. So here I am, standing in the ashes with a copy of the past, seeing what I can salvage.
 <p align="center">
     <img src="./data/screenshots/ultica-showcase-sep-2021.png" alt="Tileset: Ultica">
 </p>

@@ -18,7 +18,8 @@
     "//": "swappable, but proprietary 80g Li-Ion battery",
     "pocket_data": [ { "pocket_type": "MAGAZINE", "rigid": true, "ammo_restriction": { "battery": 50 } } ],
     "melee_damage": { "bash": 1 }
-  },
+  }, 
+  
   {
     "id": "camera_pro",
     "type": "TOOL",

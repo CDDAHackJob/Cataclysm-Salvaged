@@ -11389,7 +11389,7 @@ std::vector<const item *> item::ebooks() const
 
 void item::clear_ebooks()
 {
-	contents.clear_ebooks();
+    contents.clear_ebooks();
 }
 
 std::vector<const item *> item::cables() const

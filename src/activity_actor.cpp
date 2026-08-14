@@ -1016,137 +1016,141 @@ void data_dnload_activity_actor::do_turn( player_activity &act, Character &p )
         return; // not yet
     }
     item &dnload = *recorder;
-    item &mc = *targets.back();		//grab the last entry in the vector
-    targets.pop_back();				//remove that entry from the vector
-    if( targets.empty() ) {			//check if the vector is now empty
-        act.moves_left = 0;			//set this as the last turn if empty
+    item &mc = *targets.back();     //grab the last entry in the vector
+    targets.pop_back();             //remove that entry from the vector
+    if( targets.empty() ) {         //check if the vector is now empty
+        act.moves_left = 0;         //set this as the last turn if empty
     }
     time_until_next_card = time_per_card;
     handled_cards++;
 
-	if( dnload.has_flag( flag_EI_PHOTO_E ) ) { 
-		if( mc.has_var( "EI_EXTENDED_PHOTOS" ) ) {
-			std::vector<item::extended_photo_def> extended_photos;							//make a vector for extended photos
-			try {																			//the following avoids copies of photos
-				mc.read_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS", false );	//read the memory card's photos into the vector
-				dnload.read_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS", true );	//read the device's photos into the vector
-				dnload.write_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS" );		//write the vector into the device as the EIPC_EXTENDED_PHOTOS var
-				downloaded_extended_photos++;
-			} catch( const JsonError &e ) {
-				debugmsg( "Error card reading photos (loaded photos = %i) : %s", extended_photos.size(),
-						e.c_str() );
-			}
-		}
-	}
-	
-	//this is to catch legacy data, also useful for testing estorage's recovery function
-	if( dnload.has_flag( flag_EI_PHOTO_E ) ) { 
-		if( mc.has_var( "MC_EXTENDED_PHOTOS" ) ) {
-			std::vector<item::extended_photo_def> extended_photos;
-			try {
-				mc.read_extended_photos( extended_photos, "MC_EXTENDED_PHOTOS", false );
-				dnload.read_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS", true );
-				dnload.write_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS" );
-				downloaded_extended_photos++;
-			} catch( const JsonError &e ) {
-				debugmsg( "Error card reading photos (loaded photos = %i) : %s", extended_photos.size(),
-						e.c_str() );
-			}
-		}
-	}
-	
-	if( dnload.has_flag( flag_EI_PHOTO_M ) ) { 
-		if( !mc.get_var( "EI_MONSTER_PHOTOS" ).empty() ||
-			!mc.get_var( "MC_MONSTER_PHOTOS" ).empty() ) {
-			downloaded_monster_photos++;
-			dnload.set_var( "EI_MONSTER_PHOTOS", iuse::update_monsters( dnload.get_var( "EI_MONSTER_PHOTOS" ), mc.get_var( "EI_MONSTER_PHOTOS" ) ) );
-			dnload.set_var( "EI_MONSTER_PHOTOS", iuse::update_monsters( dnload.get_var( "EI_MONSTER_PHOTOS" ), mc.get_var( "MC_MONSTER_PHOTOS" ) ) );
-		}
-	}
-	
-	if( dnload.has_flag( flag_EI_PHOTO_F ) ) { 
-		if( !mc.get_var( "EI_PHOTOS" ).empty() ) {
-			const int found_photos = (mc.get_var( "EI_PHOTOS", 0 ) );
-			dnload.set_var( "EI_PHOTOS", dnload.get_var( "EI_PHOTOS", 0 ) + found_photos );
-			downloaded_photos += found_photos;
-			mc.erase_var( "EI_PHOTOS" );
-		} //erase vars to prevent duplication of photos/songs
-	}
-	if( dnload.has_flag( flag_EI_MUSIC ) ) { 
-		if( !mc.get_var( "EI_MUSIC" ).empty() ) {
-			const int found_music = mc.get_var( "EI_MUSIC", 0 );
-			dnload.set_var( "EI_MUSIC", dnload.get_var( "EI_MUSIC", 0 ) + found_music );
-			downloaded_songs += found_music;
-			mc.erase_var( "EI_MUSIC" );
-		}
-	}
-	if( dnload.has_flag( flag_EI_RECIPE ) ) { 
-		if( !mc.get_saved_recipes().empty() ) {
-			std::set<recipe_id> found_recipes = mc.get_saved_recipes();
-			std::set<recipe_id> saved_recipes = dnload.get_saved_recipes();
-			if( saved_recipes.empty() ) {
-				dnload.set_saved_recipes( found_recipes );
-			} else {
-				const int rnum = found_recipes.size();
-				for( int i = 0; i < rnum && !found_recipes.empty(); i++ ) {
-					const recipe_id rid = random_entry_removed( found_recipes );
-					if( saved_recipes.emplace( rid ).second ) {
-						downloaded_recipes.emplace_back( rid );
-					}
-				}
-				dnload.set_saved_recipes( saved_recipes );
-			}
-		}
-	}
-	if( dnload.has_flag( flag_EI_BOOK ) ) { 
-		if( !mc.ebooks().empty() ) {
-			std::vector<const item *> dif_set;
-			std::set<itype_id> existing_ebooks;
-			for( const item *ebook : dnload.ebooks() )
-			{
-				existing_ebooks.insert( ebook->typeId() );
-			}
-			std::vector<const item *> ebooks;
-			for( const item *ebook : mc.ebooks() )
-			{
-				if( existing_ebooks.count( ebook->typeId() ) ) {
-					continue;
-				}
-				ebooks.emplace_back( ebook );
-			}
-			for ( const item *ebook : ebooks ) {
-				dnload.put_in( *ebook, pocket_type::EBOOK );
-				downloaded_books++;
-			}
-		}
-	}
-	//covers the unread memory cards
+    if( dnload.has_flag( flag_EI_PHOTO_E ) ) {
+        if( mc.has_var( "EI_EXTENDED_PHOTOS" ) ) {
+            std::vector<item::extended_photo_def>
+            extended_photos;                          //make a vector for extended photos
+            try {                                                                           //the following avoids copies of photos
+                mc.read_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS",
+                                         false );    //read the memory card's photos into the vector
+                dnload.read_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS",
+                                             true ); //read the device's photos into the vector
+                dnload.write_extended_photos( extended_photos,
+                                              "EI_EXTENDED_PHOTOS" );      //write the vector into the device as the EIPC_EXTENDED_PHOTOS var
+                downloaded_extended_photos++;
+            } catch( const JsonError &e ) {
+                debugmsg( "Error card reading photos (loaded photos = %i) : %s", extended_photos.size(),
+                          e.c_str() );
+            }
+        }
+    }
+
+    //this is to catch legacy data, also useful for testing estorage's recovery function
+    if( dnload.has_flag( flag_EI_PHOTO_E ) ) {
+        if( mc.has_var( "MC_EXTENDED_PHOTOS" ) ) {
+            std::vector<item::extended_photo_def> extended_photos;
+            try {
+                mc.read_extended_photos( extended_photos, "MC_EXTENDED_PHOTOS", false );
+                dnload.read_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS", true );
+                dnload.write_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS" );
+                downloaded_extended_photos++;
+            } catch( const JsonError &e ) {
+                debugmsg( "Error card reading photos (loaded photos = %i) : %s", extended_photos.size(),
+                          e.c_str() );
+            }
+        }
+    }
+
+    if( dnload.has_flag( flag_EI_PHOTO_M ) ) {
+        if( !mc.get_var( "EI_MONSTER_PHOTOS" ).empty() ||
+            !mc.get_var( "MC_MONSTER_PHOTOS" ).empty() ) {
+            downloaded_monster_photos++;
+            dnload.set_var( "EI_MONSTER_PHOTOS", iuse::update_monsters( dnload.get_var( "EI_MONSTER_PHOTOS" ),
+                            mc.get_var( "EI_MONSTER_PHOTOS" ) ) );
+            dnload.set_var( "EI_MONSTER_PHOTOS", iuse::update_monsters( dnload.get_var( "EI_MONSTER_PHOTOS" ),
+                            mc.get_var( "MC_MONSTER_PHOTOS" ) ) );
+        }
+    }
+
+    if( dnload.has_flag( flag_EI_PHOTO_F ) ) {
+        if( !mc.get_var( "EI_PHOTOS" ).empty() ) {
+            const int found_photos = ( mc.get_var( "EI_PHOTOS", 0 ) );
+            dnload.set_var( "EI_PHOTOS", dnload.get_var( "EI_PHOTOS", 0 ) + found_photos );
+            downloaded_photos += found_photos;
+            mc.erase_var( "EI_PHOTOS" );
+        } //erase vars to prevent duplication of photos/songs
+    }
+    if( dnload.has_flag( flag_EI_MUSIC ) ) {
+        if( !mc.get_var( "EI_MUSIC" ).empty() ) {
+            const int found_music = mc.get_var( "EI_MUSIC", 0 );
+            dnload.set_var( "EI_MUSIC", dnload.get_var( "EI_MUSIC", 0 ) + found_music );
+            downloaded_songs += found_music;
+            mc.erase_var( "EI_MUSIC" );
+        }
+    }
+    if( dnload.has_flag( flag_EI_RECIPE ) ) {
+        if( !mc.get_saved_recipes().empty() ) {
+            std::set<recipe_id> found_recipes = mc.get_saved_recipes();
+            std::set<recipe_id> saved_recipes = dnload.get_saved_recipes();
+            if( saved_recipes.empty() ) {
+                dnload.set_saved_recipes( found_recipes );
+            } else {
+                const int rnum = found_recipes.size();
+                for( int i = 0; i < rnum && !found_recipes.empty(); i++ ) {
+                    const recipe_id rid = random_entry_removed( found_recipes );
+                    if( saved_recipes.emplace( rid ).second ) {
+                        downloaded_recipes.emplace_back( rid );
+                    }
+                }
+                dnload.set_saved_recipes( saved_recipes );
+            }
+        }
+    }
+    if( dnload.has_flag( flag_EI_BOOK ) ) {
+        if( !mc.ebooks().empty() ) {
+            std::vector<const item *> dif_set;
+            std::set<itype_id> existing_ebooks;
+            for( const item *ebook : dnload.ebooks() ) {
+                existing_ebooks.insert( ebook->typeId() );
+            }
+            std::vector<const item *> ebooks;
+            for( const item *ebook : mc.ebooks() ) {
+                if( existing_ebooks.count( ebook->typeId() ) ) {
+                    continue;
+                }
+                ebooks.emplace_back( ebook );
+            }
+            for( const item *ebook : ebooks ) {
+                dnload.put_in( *ebook, pocket_type::EBOOK );
+                downloaded_books++;
+            }
+        }
+    }
+    //covers the unread memory cards
     const memory_card_info *mmd = mc.type->memory_card_data ? &*mc.type->memory_card_data : nullptr;
     const bool failed_encrypted = mmd && mmd->data_chance < rng_float( 0.0, 1.0 );
-	bool partial = false;
+    bool partial = false;
     if( !mmd || failed_encrypted ) {
         encrypted_cards += failed_encrypted ? 1 : 0;
         return;
     }
     if( mmd->photos_chance >= rng_float( 0.0, 1.0 ) ) {
         const int new_photos = rng( 1, mmd->photos_amount );
-		if( dnload.has_flag( flag_EI_PHOTO_F ) ) { 
-			dnload.set_var( "EI_PHOTOS", dnload.get_var( "EI_PHOTOS", 0 ) + new_photos );
-			downloaded_photos += new_photos;
-		} else {
-			partial = true;
-			mc.set_var( "EI_PHOTOS", new_photos );
-		}
+        if( dnload.has_flag( flag_EI_PHOTO_F ) ) {
+            dnload.set_var( "EI_PHOTOS", dnload.get_var( "EI_PHOTOS", 0 ) + new_photos );
+            downloaded_photos += new_photos;
+        } else {
+            partial = true;
+            mc.set_var( "EI_PHOTOS", new_photos );
+        }
     }
     if( mmd->songs_chance >= rng_float( 0.0, 1.0 ) ) {
         const int new_songs = rng( 1, mmd->songs_amount );
-		if( dnload.has_flag( flag_EI_PHOTO_F ) ) { 
-			dnload.set_var( "EI_MUSIC", dnload.get_var( "EI_MUSIC", 0 ) + new_songs );
-			downloaded_songs += new_songs;
-		} else {
-			partial = true;
-			mc.set_var( "EI_MUSIC", new_songs );
-		}
+        if( dnload.has_flag( flag_EI_PHOTO_F ) ) {
+            dnload.set_var( "EI_MUSIC", dnload.get_var( "EI_MUSIC", 0 ) + new_songs );
+            downloaded_songs += new_songs;
+        } else {
+            partial = true;
+            mc.set_var( "EI_MUSIC", new_songs );
+        }
     }
     if( mmd->recipes_chance >= rng_float( 0.0, 1.0 ) ) {
         std::set<recipe_id> saved_recipes = dnload.get_saved_recipes();
@@ -1168,27 +1172,28 @@ void data_dnload_activity_actor::do_turn( player_activity &act, Character &p )
                 downloaded_recipes.emplace_back( rid );
             }
         }
-		if( dnload.has_flag( flag_EI_RECIPE ) ) { 
-			dnload.set_saved_recipes( saved_recipes );
-		} else {
-			partial = true;
-			mc.set_saved_recipes( saved_recipes );
-		}
-		
+        if( dnload.has_flag( flag_EI_RECIPE ) ) {
+            dnload.set_saved_recipes( saved_recipes );
+        } else {
+            partial = true;
+            mc.set_saved_recipes( saved_recipes );
+        }
+
     }
-	if( mmd && mmd->on_read_convert_to.is_valid() ) {
-		if ( !partial ) {
-			mc.clear_vars();
-			mc.unset_flags();
-		} else {
-			mc.set_flag( flag_MC_HAS_DATA );
-		}
+    if( mmd && mmd->on_read_convert_to.is_valid() ) {
+        if( !partial ) {
+            mc.clear_vars();
+            mc.unset_flags();
+        } else {
+            mc.set_flag( flag_MC_HAS_DATA );
+        }
         mc.convert( mmd->on_read_convert_to );
     } // mc is invalid past this point
 }
 
-static void print_data_dnload_tally( Character &who, int encrypted_cards, int photos, int songs, int books,
-                                       const std::vector<recipe_id> &recipes, int extended_photos, int monster_photos )
+static void print_data_dnload_tally( Character &who, int encrypted_cards, int photos, int songs,
+                                     int books,
+                                     const std::vector<recipe_id> &recipes, int extended_photos, int monster_photos )
 {
     if( !recipes.empty() ) {
         who.add_msg_if_player( m_good, _( "Downloaded %d %s: %s." ), recipes.size(),
@@ -1215,7 +1220,7 @@ static void print_data_dnload_tally( Character &who, int encrypted_cards, int ph
         who.add_msg_if_player( m_good, _( "Downloaded %d new %s." ),
                                songs, n_gettext( "song", "songs", songs ) );
     }
-	if( books > 0 && who.is_avatar() ) {
+    if( books > 0 && who.is_avatar() ) {
         who.add_msg_if_player( m_good, _( "Downloaded %d new %s." ),
                                books, n_gettext( "book", "books", books ) );
     }
@@ -1227,7 +1232,7 @@ static void print_data_dnload_tally( Character &who, int encrypted_cards, int ph
 void data_dnload_activity_actor::canceled( player_activity &act, Character &p )
 {
     print_data_dnload_tally( p, encrypted_cards, downloaded_photos, downloaded_songs, downloaded_books,
-                               downloaded_recipes, downloaded_extended_photos, downloaded_monster_photos );
+                             downloaded_recipes, downloaded_extended_photos, downloaded_monster_photos );
     p.add_msg_if_player( m_info, _( "You stop downloading data after %d %s." ),
                          handled_cards, n_gettext( "card", "cards", handled_cards ) );
     act.set_to_null();
@@ -1236,7 +1241,7 @@ void data_dnload_activity_actor::canceled( player_activity &act, Character &p )
 void data_dnload_activity_actor::finish( player_activity &act, Character &p )
 {
     print_data_dnload_tally( p, encrypted_cards, downloaded_photos, downloaded_songs, downloaded_books,
-                               downloaded_recipes, downloaded_extended_photos, downloaded_monster_photos );
+                             downloaded_recipes, downloaded_extended_photos, downloaded_monster_photos );
     p.add_msg_if_player( m_info, _( "You finish downloading data from %d %s." ),
                          handled_cards, n_gettext( "card", "cards", handled_cards ) );
     act.set_to_null();
@@ -1253,7 +1258,7 @@ void data_dnload_activity_actor::serialize( JsonOut &jsout ) const
     jsout.member( "downloaded_photos", downloaded_photos );
     jsout.member( "downloaded_songs", downloaded_songs );
     jsout.member( "downloaded_recipes", downloaded_recipes );
-	jsout.member( "downloaded_books", downloaded_books );
+    jsout.member( "downloaded_books", downloaded_books );
     jsout.member( "downloaded_extended_photos", downloaded_extended_photos );
     jsout.member( "downloaded_monster_photos", downloaded_monster_photos );
     jsout.end_object();
@@ -1271,7 +1276,7 @@ std::unique_ptr<activity_actor> data_dnload_activity_actor::deserialize( JsonVal
     jsobj.read( "downloaded_photos", actor.downloaded_photos );
     jsobj.read( "downloaded_songs", actor.downloaded_songs );
     jsobj.read( "downloaded_recipes", actor.downloaded_recipes );
-	jsobj.read( "downloaded_books", actor.downloaded_books );
+    jsobj.read( "downloaded_books", actor.downloaded_books );
     jsobj.read( "downloaded_extended_photos", actor.downloaded_extended_photos );
     jsobj.read( "downloaded_monster_photos", actor.downloaded_monster_photos );
     return actor.clone();

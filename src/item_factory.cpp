@@ -1763,7 +1763,7 @@ void Item_factory::init()
     add_iuse( "EBOOKSAVE", &iuse::ebooksave );
     add_iuse( "EBOOKREAD", &iuse::ebookread );
     add_iuse( "EMF_PASSIVE_ON", &iuse::emf_passive_on );
-	add_iuse( "EMOVEDATA", &iuse::emovedata );
+    add_iuse( "EMOVEDATA", &iuse::emovedata );
     add_iuse( "ESTORAGE", &iuse::estorage );
     add_iuse( "EXTINGUISHER", &iuse::extinguisher );
     add_iuse( "EYEDROPS", &iuse::eyedrops );

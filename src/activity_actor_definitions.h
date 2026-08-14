@@ -311,7 +311,7 @@ class data_dnload_activity_actor: public activity_actor
         int downloaded_photos = 0;
         int downloaded_songs = 0;
         std::vector<recipe_id> downloaded_recipes;
-		int downloaded_books = 0;
+        int downloaded_books = 0;
         int downloaded_extended_photos = 0;
         int downloaded_monster_photos = 0;
 };

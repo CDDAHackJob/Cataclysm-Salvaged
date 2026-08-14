@@ -2610,10 +2610,10 @@ class item : public visitable
         std::vector<const item *> mods() const;
 
         std::vector<const item *> softwares() const;
-		/** Returns a vector of ebooks */
+        /** Returns a vector of ebooks */
         std::vector<const item *> ebooks() const;
-		/** Goes through every pocket of the item and removes contents if they are EBOOK type */
-		void clear_ebooks();
+        /** Goes through every pocket of the item and removes contents if they are EBOOK type */
+        void clear_ebooks();
 
         std::vector<const item *> cables() const;
 

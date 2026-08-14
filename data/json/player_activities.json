@@ -980,7 +980,6 @@
     "rooted": true,
     "based_on": "speed"
   },
-
   {
     "id": "ACT_DATA_DNLOAD",
     "type": "activity_type",

@@ -5591,19 +5591,20 @@ std::optional<int> iuse::epic_music( Character *p, item *it, const tripoint &pos
 
 std::optional<int> iuse::emovedata( Character *p, item *it, const tripoint & )
 {
-	//debug stuff and bug prevention
+    //debug stuff and bug prevention
     if( !p ) {
         debugmsg( "%s called action device_storage that requires character but no character is present",
                   it->typeId().str() );
         return std::nullopt;
     }
     if( p->is_npc() ) {
-	        debugmsg( "%s was activated by an NPC.",
-				it->typeId().str() );
+        debugmsg( "%s was activated by an NPC.",
+                  it->typeId().str() );
         return std::nullopt;
     }
     if( p->is_underwater() ) {
-        p->add_msg_if_player( m_info, _( "It seems that, like most electronics, this does not work well with water." ) );
+        p->add_msg_if_player( m_info,
+                              _( "It seems that, like most electronics, this does not work well with water." ) );
         return std::nullopt;
     }
     if( p->is_blind() ) {
@@ -5613,46 +5614,47 @@ std::optional<int> iuse::emovedata( Character *p, item *it, const tripoint & )
     if( p->has_flag( json_flag_HYPEROPIC ) && !p->worn_with_flag( flag_FIX_FARSIGHT ) &&
         !p->has_effect( effect_contacts ) && !p->has_effect( effect_transition_contacts ) &&
         !p->has_flag( json_flag_ENHANCED_VISION ) ) {
-        p->add_msg_if_player( m_info, _( "All you can see is a blurry screen. Reading glasses would help." ) );
+        p->add_msg_if_player( m_info,
+                              _( "All you can see is a blurry screen. Reading glasses would help." ) );
         return std::nullopt;
     }
-	if( p->cant_do_mounted() ) {
-		p->add_msg_if_player( m_info, _( "You cannot do that while mounted." ) );
-		return std::nullopt;
-	}
-    
-	enum {
+    if( p->cant_do_mounted() ) {
+        p->add_msg_if_player( m_info, _( "You cannot do that while mounted." ) );
+        return std::nullopt;
+    }
+
+    enum {
         ei_upload, ei_download, ei_check, ei_delete, ei_delete_mc
     };
-	enum {
-		ei_all, ei_extended_photos, ei_monsters, ei_recipe, ei_ebook, ei_found_media
-	};
-	uilist emenu;
-	emenu.text = ( "What do you want to do with this device?" );
-	if ( it->has_flag( flag_EI_UPLOAD ) ) {
-		if( !it->get_var( "EI_PHOTOS" ).empty() ||
-			!it->get_var( "EI_EXTENDED_PHOTOS" ).empty() ||
-			!it->get_var( "EI_MONSTER_PHOTOS" ).empty() ||
-			!it->get_var( "EI_MUSIC" ).empty() ||
-			!it->get_saved_recipes().empty() ) {
-			emenu.addentry( ei_upload, true, 'l', _( "Upload data elsewhere?" ) );
-		} else {
-			emenu.addentry( ei_upload, false, 'l', _( "Nothing to upload from device" ) );
-		}
-	}
-	if ( it->has_flag( flag_EI_DNLOAD ) ) {
-		emenu.addentry( ei_download, true, 'y', _( "Download data from something?" ) );
-	}
-	if ( it->has_flag( flag_EI_CHECK ) ) {
-		emenu.addentry( ei_check, true, 'q', _( "Check the data on something?" ) );
-	}
-	emenu.addentry( ei_delete, true, 'd', _( "Purge Device Data" ) );
-	emenu.addentry( ei_delete_mc, true, 'c', _( "Purge Card Data" ) );
-	
-	emenu.query();
+    enum {
+        ei_all, ei_extended_photos, ei_monsters, ei_recipe, ei_ebook, ei_found_media
+    };
+    uilist emenu;
+    emenu.text = ( "What do you want to do with this device?" );
+    if( it->has_flag( flag_EI_UPLOAD ) ) {
+        if( !it->get_var( "EI_PHOTOS" ).empty() ||
+            !it->get_var( "EI_EXTENDED_PHOTOS" ).empty() ||
+            !it->get_var( "EI_MONSTER_PHOTOS" ).empty() ||
+            !it->get_var( "EI_MUSIC" ).empty() ||
+            !it->get_saved_recipes().empty() ) {
+            emenu.addentry( ei_upload, true, 'l', _( "Upload data elsewhere?" ) );
+        } else {
+            emenu.addentry( ei_upload, false, 'l', _( "Nothing to upload from device" ) );
+        }
+    }
+    if( it->has_flag( flag_EI_DNLOAD ) ) {
+        emenu.addentry( ei_download, true, 'y', _( "Download data from something?" ) );
+    }
+    if( it->has_flag( flag_EI_CHECK ) ) {
+        emenu.addentry( ei_check, true, 'q', _( "Check the data on something?" ) );
+    }
+    emenu.addentry( ei_delete, true, 'd', _( "Purge Device Data" ) );
+    emenu.addentry( ei_delete_mc, true, 'c', _( "Purge Card Data" ) );
+
+    emenu.query();
     const int choice = emenu.ret;
-	//stuff for ebooks
-	auto book_difference = []( const item & from_it, const item & to_it ) -> std::vector<const item *> {
+    //stuff for ebooks
+    auto book_difference = []( const item & from_it, const item & to_it ) -> std::vector<const item *> {
         std::set<itype_id> existing_ebooks;
         for( const item *ebook : to_it.ebooks() )
         {
@@ -5668,195 +5670,199 @@ std::optional<int> iuse::emovedata( Character *p, item *it, const tripoint & )
         }
         return ebooks;
     };
-	
-	if ( choice == ei_upload ) {
-		bool delete_setting = false;
-		p->mod_moves( -to_moves<int>( 1_seconds ) );
-		inventory_filter_preset preset( []( const item_location & it ) {
-                return it->has_flag( flag_MC_MOBILE ) && it->typeId() == itype_memory_card;
-            } );
-		inventory_pick_selector inv_s( *p, preset );
+
+    if( choice == ei_upload ) {
+        bool delete_setting = false;
+        p->mod_moves( -to_moves<int>( 1_seconds ) );
+        inventory_filter_preset preset( []( const item_location & it ) {
+            return it->has_flag( flag_MC_MOBILE ) && it->typeId() == itype_memory_card;
+        } );
+        inventory_pick_selector inv_s( *p, preset );
         inv_s.set_title( _( "Choose a memory card to upload data to:" ) );
         inv_s.set_display_stats( true );
         inv_s.add_character_items( *p );
         inv_s.add_nearby_items( 1 );
-		item_location loc = inv_s.execute();
+        item_location loc = inv_s.execute();
         if( inv_s.empty() ) {
             popup( "You don't have any suitable memory cards to upload to." );
             return std::nullopt;
         }
-		p->mod_moves( -to_moves<int>( 1_seconds ) );
-        item* mc = loc.get_item();
-		p->add_msg_if_player( m_neutral, _( "You slot in the %s to upload data to it." ), mc->tname() );
+        p->mod_moves( -to_moves<int>( 1_seconds ) );
+        item *mc = loc.get_item();
+        p->add_msg_if_player( m_neutral, _( "You slot in the %s to upload data to it." ), mc->tname() );
 
         if( mc->has_flag( flag_MC_HAS_DATA ) ) {
             if( query_yn( _( "Did you want to clear the old data on the card first?" ) ) ) {
                 delete_setting = true;
             }
         } //theoretically the flag system doesn't need to filter data leaving the device, just check if data is allowed to leave.
-		uilist upmenu; //this will allow any future changes to be balanced out via transfers, unlikely as that is
-		upmenu.text = ( "Upload ALL of the device's data, or just one kind?" );
-		upmenu.addentry( ei_all, true, 'a', _( "Upload ALL data!" ) );
-		if( !it->get_var( "EI_EXTENDED_PHOTOS" ).empty() ) {
-			upmenu.addentry( ei_extended_photos, true, 'c', _( "JUST my Camera photos." ) );
-		}
-		if( !it->get_var( "EI_MONSTER_PHOTOS" ).empty() ) {
-			upmenu.addentry( ei_monsters, true, 'm', _( "JUST my Monster Collection." ) );
-		}
-		if( !it->get_saved_recipes().empty() ) {
-			upmenu.addentry( ei_recipe, true, 'r', _( "JUST my Recipes." ) );
-		}
-		if( !it->ebooks().empty() ) {
-			upmenu.addentry( ei_ebook, true, 'b', _( "JUST my eBooks." ) );
-		}
-		if( !it->get_var( "EI_PHOTOS" ).empty() ||
-			!it->get_var( "EI_MUSIC" ).empty() ) {
-			upmenu.addentry( ei_found_media, true, 'f', _( "JUST my found media." ) );
-		}
-		upmenu.query();
-		const int data_choice = upmenu.ret;
-		if( delete_setting ){
-			mc->clear_vars();
-			mc->unset_flags();
-		}
-		mc->set_flag( flag_MC_HAS_DATA );
-		if( data_choice == ei_all ) {
-			if( !it->get_var( "EI_EXTENDED_PHOTOS" ).empty() ) {
-				mc->set_var( "EI_EXTENDED_PHOTOS", it->get_var( "EI_EXTENDED_PHOTOS" ) );
-			}
-			if( !it->get_var( "EI_MONSTER_PHOTOS" ).empty() ) {
-				if( !mc->get_var( "EI_MONSTER_PHOTOS" ).empty() ) {
-					const std::string monster_photos = it->get_var( "EI_MONSTER_PHOTOS" );
-					std::string photos = mc->get_var( "EI_MONSTER_PHOTOS" );
-					std::istringstream f( monster_photos );
-					std::string s;
-					while( getline( f, s, ',' ) ) {
-						if( s.empty() ) {
-							continue;
-						} //This stuff is lengthy but needed to prevent a memory leak from uploading monsters to the same card
-						const std::string mtype = s;
-						getline( f, s, ',' );
-						const int quality = get_quality_from_string( s );
-						const size_t mc_strpos = photos.find( "," + mtype + "," );
-						if( mc_strpos == std::string::npos ) {
-							photos += mtype + "," + string_format( "%d", quality ) + ",";
-						} else {
-							const size_t strqpos = mc_strpos + mtype.size() + 2;
-							const size_t next_comma = photos.find( ',', strqpos );
-							std::string old_s = photos.substr( strqpos, next_comma );
-							old_s.resize( 1 );
-							const int old_quality =
-							get_quality_from_string( old_s );
-							if( quality > old_quality ) {
-								const std::string quality_s = string_format( "%d", quality );
-								cata_assert( quality_s.size() == 1 );
-								photos[strqpos] = quality_s.front();
-							}
-						}
-					}
-					mc->set_var( "EI_MONSTER_PHOTOS", photos );
-				} else {
-					mc->set_var( "EI_MONSTER_PHOTOS", it->get_var( "EI_MONSTER_PHOTOS" ) );
-				}
-			}
-			if( !it->get_saved_recipes().empty() ) {
-				std::set<recipe_id> found_recipes = it->get_saved_recipes();
-				std::set<recipe_id> saved_recipes = mc->get_saved_recipes();
-				if( saved_recipes.empty() ) {
-					mc->set_saved_recipes( found_recipes );
-				} else {
-					const int rnum = found_recipes.size();
-					for( int i = 0; i < rnum && !found_recipes.empty(); i++ ) {
-						const recipe_id rid = random_entry_removed( found_recipes );
-						saved_recipes.emplace( rid );
-					}
-					mc->set_saved_recipes( it->get_saved_recipes() );
-				}
-			}
-			if( !it->ebooks().empty() ) {
-				std::vector<const item *> dif_set;
-				dif_set = book_difference( *it, *mc );
-				for ( const item *ebook : dif_set ) {
-					mc->put_in( *ebook, pocket_type::EBOOK );
-				}
-			}
-			if( !mc->get_var( "EI_PHOTOS" ).empty() ) {
-				mc->set_var( "EI_PHOTOS", it->get_var( "EI_PHOTOS", 0 ) + mc->get_var( "EI_PHOTOS", 0 ) );
-			} else {
-				mc->set_var( "EI_PHOTOS", it->get_var( "EI_PHOTOS" ) );
-			}
-			if( !mc->get_var( "EI_MUSIC" ).empty() ) {
-				mc->set_var( "EI_MUSIC", it->get_var( "EI_MUSIC", 0 ) + mc->get_var( "EI_MUSIC", 0 ) );
-			} else {
-				mc->set_var( "EI_MUSIC", it->get_var( "EI_MUSIC" ) );
-			}
-			p->add_msg_if_player( m_neutral, _( "You upload all of your data to the memory card." ) );
-			//without this, the amount of found media can multiply endlessly
-			p->add_msg_if_player( m_info, _( "WARNING: Any found media was moved without keeping the originals." ) );
-			it->erase_var( "EI_PHOTOS" );
-			it->erase_var( "EI_MUSIC" );
-		} else if( data_choice == ei_extended_photos ) {
-			std::vector<item::extended_photo_def> extended_photos;
-			try {
-				it->read_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS", false );
-				mc->read_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS", true );
-				mc->write_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS" );
-			} catch( const JsonError &e ) {
-				debugmsg( "Error card reading photos (loaded photos = %i) : %s", extended_photos.size(), e.c_str() );
-			}
-			mc->set_var( "EI_EXTENDED_PHOTOS", it->get_var( "EI_EXTENDED_PHOTOS" ) );
-			remove_duplicate_photos( mc, "EI_EXTENDED_PHOTOS" );
-			p->add_msg_if_player( m_neutral, _( "You upload your photos to the memory card." ) );
-		} else if( data_choice == ei_monsters ) {
-			if( !it->get_var( "EI_MONSTER_PHOTOS" ).empty() ) { // in case a null slips by
-				mc-> set_var( "EI_MONSTER_PHOTOS", iuse::update_monsters( mc->get_var( "EI_MONSTER_PHOTOS" ), it->get_var( "EI_MONSTER_PHOTOS" ) ) );
-			}
-			p->add_msg_if_player( m_neutral, _( "You upload your monster collection to the memory card." ) );
-		} else if( data_choice == ei_recipe ) {
-			std::set<recipe_id> found_recipes = it->get_saved_recipes();
-			std::set<recipe_id> saved_recipes = mc->get_saved_recipes();
-			if( saved_recipes.empty() ) {
-				mc->set_saved_recipes( found_recipes );
-			} else {
-				const int rnum = found_recipes.size();
-				for( int i = 0; i < rnum && !found_recipes.empty(); i++ ) {
-					const recipe_id rid = random_entry_removed( found_recipes );
-					saved_recipes.emplace( rid );
-				}
-				mc->set_saved_recipes( saved_recipes );
-			}
-			p->add_msg_if_player( m_neutral, _( "You upload your recipes to the memory card." ) );
-		} else if( data_choice == ei_ebook ) {
-			std::vector<const item *> dif_set;
-			dif_set = book_difference( *it, *mc );
-			for ( const item *ebook : dif_set ) {
-				mc->put_in( *ebook, pocket_type::EBOOK );
-			}
-			p->add_msg_if_player( m_info, _( "You uploaded %d books to the %s" ), dif_set.size(), mc->tname() );
-		} else if( data_choice == ei_found_media ) {
-			if( !mc->get_var( "EI_PHOTOS" ).empty() ) {
-				mc->set_var( "EI_PHOTOS", it->get_var( "EI_PHOTOS", 0 ) + mc->get_var( "EI_PHOTOS", 0 ) );
-			} else {
-				mc->set_var( "EI_PHOTOS", it->get_var( "EI_PHOTOS" ) );
-			}
-			if( !mc->get_var( "EI_MUSIC" ).empty() ) {
-				mc->set_var( "EI_MUSIC", it->get_var( "EI_MUSIC", 0 ) + mc->get_var( "EI_MUSIC", 0 ) );
-			} else {
-				mc->set_var( "EI_MUSIC", it->get_var( "EI_MUSIC" ) );
-			}
-			p->add_msg_if_player( m_neutral, _( "You upload your found media to the memory card." ) );
-			p->add_msg_if_player( m_info, _( "WARNING: Any found media was moved without keeping the originals." ) );
-			it->erase_var( "EI_PHOTOS" );
-			it->erase_var( "EI_MUSIC" );
-		}
-		
+        uilist upmenu; //this will allow any future changes to be balanced out via transfers, unlikely as that is
+        upmenu.text = ( "Upload ALL of the device's data, or just one kind?" );
+        upmenu.addentry( ei_all, true, 'a', _( "Upload ALL data!" ) );
+        if( !it->get_var( "EI_EXTENDED_PHOTOS" ).empty() ) {
+            upmenu.addentry( ei_extended_photos, true, 'c', _( "JUST my Camera photos." ) );
+        }
+        if( !it->get_var( "EI_MONSTER_PHOTOS" ).empty() ) {
+            upmenu.addentry( ei_monsters, true, 'm', _( "JUST my Monster Collection." ) );
+        }
+        if( !it->get_saved_recipes().empty() ) {
+            upmenu.addentry( ei_recipe, true, 'r', _( "JUST my Recipes." ) );
+        }
+        if( !it->ebooks().empty() ) {
+            upmenu.addentry( ei_ebook, true, 'b', _( "JUST my eBooks." ) );
+        }
+        if( !it->get_var( "EI_PHOTOS" ).empty() ||
+            !it->get_var( "EI_MUSIC" ).empty() ) {
+            upmenu.addentry( ei_found_media, true, 'f', _( "JUST my found media." ) );
+        }
+        upmenu.query();
+        const int data_choice = upmenu.ret;
+        if( delete_setting ) {
+            mc->clear_vars();
+            mc->unset_flags();
+        }
+        mc->set_flag( flag_MC_HAS_DATA );
+        if( data_choice == ei_all ) {
+            if( !it->get_var( "EI_EXTENDED_PHOTOS" ).empty() ) {
+                mc->set_var( "EI_EXTENDED_PHOTOS", it->get_var( "EI_EXTENDED_PHOTOS" ) );
+            }
+            if( !it->get_var( "EI_MONSTER_PHOTOS" ).empty() ) {
+                if( !mc->get_var( "EI_MONSTER_PHOTOS" ).empty() ) {
+                    const std::string monster_photos = it->get_var( "EI_MONSTER_PHOTOS" );
+                    std::string photos = mc->get_var( "EI_MONSTER_PHOTOS" );
+                    std::istringstream f( monster_photos );
+                    std::string s;
+                    while( getline( f, s, ',' ) ) {
+                        if( s.empty() ) {
+                            continue;
+                        } //This stuff is lengthy but needed to prevent a memory leak from uploading monsters to the same card
+                        const std::string mtype = s;
+                        getline( f, s, ',' );
+                        const int quality = get_quality_from_string( s );
+                        const size_t mc_strpos = photos.find( "," + mtype + "," );
+                        if( mc_strpos == std::string::npos ) {
+                            photos += mtype + "," + string_format( "%d", quality ) + ",";
+                        } else {
+                            const size_t strqpos = mc_strpos + mtype.size() + 2;
+                            const size_t next_comma = photos.find( ',', strqpos );
+                            std::string old_s = photos.substr( strqpos, next_comma );
+                            old_s.resize( 1 );
+                            const int old_quality =
+                                get_quality_from_string( old_s );
+                            if( quality > old_quality ) {
+                                const std::string quality_s = string_format( "%d", quality );
+                                cata_assert( quality_s.size() == 1 );
+                                photos[strqpos] = quality_s.front();
+                            }
+                        }
+                    }
+                    mc->set_var( "EI_MONSTER_PHOTOS", photos );
+                } else {
+                    mc->set_var( "EI_MONSTER_PHOTOS", it->get_var( "EI_MONSTER_PHOTOS" ) );
+                }
+            }
+            if( !it->get_saved_recipes().empty() ) {
+                std::set<recipe_id> found_recipes = it->get_saved_recipes();
+                std::set<recipe_id> saved_recipes = mc->get_saved_recipes();
+                if( saved_recipes.empty() ) {
+                    mc->set_saved_recipes( found_recipes );
+                } else {
+                    const int rnum = found_recipes.size();
+                    for( int i = 0; i < rnum && !found_recipes.empty(); i++ ) {
+                        const recipe_id rid = random_entry_removed( found_recipes );
+                        saved_recipes.emplace( rid );
+                    }
+                    mc->set_saved_recipes( it->get_saved_recipes() );
+                }
+            }
+            if( !it->ebooks().empty() ) {
+                std::vector<const item *> dif_set;
+                dif_set = book_difference( *it, *mc );
+                for( const item *ebook : dif_set ) {
+                    mc->put_in( *ebook, pocket_type::EBOOK );
+                }
+            }
+            if( !mc->get_var( "EI_PHOTOS" ).empty() ) {
+                mc->set_var( "EI_PHOTOS", it->get_var( "EI_PHOTOS", 0 ) + mc->get_var( "EI_PHOTOS", 0 ) );
+            } else {
+                mc->set_var( "EI_PHOTOS", it->get_var( "EI_PHOTOS" ) );
+            }
+            if( !mc->get_var( "EI_MUSIC" ).empty() ) {
+                mc->set_var( "EI_MUSIC", it->get_var( "EI_MUSIC", 0 ) + mc->get_var( "EI_MUSIC", 0 ) );
+            } else {
+                mc->set_var( "EI_MUSIC", it->get_var( "EI_MUSIC" ) );
+            }
+            p->add_msg_if_player( m_neutral, _( "You upload all of your data to the memory card." ) );
+            //without this, the amount of found media can multiply endlessly
+            p->add_msg_if_player( m_info,
+                                  _( "WARNING: Any found media was moved without keeping the originals." ) );
+            it->erase_var( "EI_PHOTOS" );
+            it->erase_var( "EI_MUSIC" );
+        } else if( data_choice == ei_extended_photos ) {
+            std::vector<item::extended_photo_def> extended_photos;
+            try {
+                it->read_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS", false );
+                mc->read_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS", true );
+                mc->write_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS" );
+            } catch( const JsonError &e ) {
+                debugmsg( "Error card reading photos (loaded photos = %i) : %s", extended_photos.size(),
+                          e.c_str() );
+            }
+            mc->set_var( "EI_EXTENDED_PHOTOS", it->get_var( "EI_EXTENDED_PHOTOS" ) );
+            remove_duplicate_photos( mc, "EI_EXTENDED_PHOTOS" );
+            p->add_msg_if_player( m_neutral, _( "You upload your photos to the memory card." ) );
+        } else if( data_choice == ei_monsters ) {
+            if( !it->get_var( "EI_MONSTER_PHOTOS" ).empty() ) { // in case a null slips by
+                mc-> set_var( "EI_MONSTER_PHOTOS", iuse::update_monsters( mc->get_var( "EI_MONSTER_PHOTOS" ),
+                              it->get_var( "EI_MONSTER_PHOTOS" ) ) );
+            }
+            p->add_msg_if_player( m_neutral, _( "You upload your monster collection to the memory card." ) );
+        } else if( data_choice == ei_recipe ) {
+            std::set<recipe_id> found_recipes = it->get_saved_recipes();
+            std::set<recipe_id> saved_recipes = mc->get_saved_recipes();
+            if( saved_recipes.empty() ) {
+                mc->set_saved_recipes( found_recipes );
+            } else {
+                const int rnum = found_recipes.size();
+                for( int i = 0; i < rnum && !found_recipes.empty(); i++ ) {
+                    const recipe_id rid = random_entry_removed( found_recipes );
+                    saved_recipes.emplace( rid );
+                }
+                mc->set_saved_recipes( saved_recipes );
+            }
+            p->add_msg_if_player( m_neutral, _( "You upload your recipes to the memory card." ) );
+        } else if( data_choice == ei_ebook ) {
+            std::vector<const item *> dif_set;
+            dif_set = book_difference( *it, *mc );
+            for( const item *ebook : dif_set ) {
+                mc->put_in( *ebook, pocket_type::EBOOK );
+            }
+            p->add_msg_if_player( m_info, _( "You uploaded %d books to the %s" ), dif_set.size(), mc->tname() );
+        } else if( data_choice == ei_found_media ) {
+            if( !mc->get_var( "EI_PHOTOS" ).empty() ) {
+                mc->set_var( "EI_PHOTOS", it->get_var( "EI_PHOTOS", 0 ) + mc->get_var( "EI_PHOTOS", 0 ) );
+            } else {
+                mc->set_var( "EI_PHOTOS", it->get_var( "EI_PHOTOS" ) );
+            }
+            if( !mc->get_var( "EI_MUSIC" ).empty() ) {
+                mc->set_var( "EI_MUSIC", it->get_var( "EI_MUSIC", 0 ) + mc->get_var( "EI_MUSIC", 0 ) );
+            } else {
+                mc->set_var( "EI_MUSIC", it->get_var( "EI_MUSIC" ) );
+            }
+            p->add_msg_if_player( m_neutral, _( "You upload your found media to the memory card." ) );
+            p->add_msg_if_player( m_info,
+                                  _( "WARNING: Any found media was moved without keeping the originals." ) );
+            it->erase_var( "EI_PHOTOS" );
+            it->erase_var( "EI_MUSIC" );
+        }
+
         return 1;
-	}
-	if ( choice == ei_download ) {
-		inventory_filter_preset preset( []( const item_location & it ) {
-                return it->has_flag( flag_MC_HAS_DATA ) || it->type->memory_card_data;
-            } );
-		inventory_multiselector inv_s( *p, preset );
+    }
+    if( choice == ei_download ) {
+        inventory_filter_preset preset( []( const item_location & it ) {
+            return it->has_flag( flag_MC_HAS_DATA ) || it->type->memory_card_data;
+        } );
+        inventory_multiselector inv_s( *p, preset );
 
         inv_s.set_title( _( "Choose memory cards to download data from:" ) );
         inv_s.set_display_stats( true );
@@ -5875,117 +5881,120 @@ std::optional<int> iuse::emovedata( Character *p, item *it, const tripoint & )
         const item_location reader( *p, it );
         const data_dnload_activity_actor actor( reader, targets );
         p->assign_activity( player_activity( actor ) );
-	}
-	if ( choice == ei_check ) {
-		p->mod_moves( -to_moves<int>( 1_seconds ) ); //movement to check
+    }
+    if( choice == ei_check ) {
+        p->mod_moves( -to_moves<int>( 1_seconds ) ); //movement to check
         inventory_filter_preset preset( []( const item_location & it ) {
-                return it->has_flag( flag_MC_HAS_DATA ) && it->typeId() == itype_memory_card;
-            } );
-		inventory_pick_selector inv_s( *p, preset );
+            return it->has_flag( flag_MC_HAS_DATA ) && it->typeId() == itype_memory_card;
+        } );
+        inventory_pick_selector inv_s( *p, preset );
         inv_s.set_title( _( "Choose a memory card to check:" ) );
         inv_s.set_display_stats( true );
         inv_s.add_character_items( *p );
         inv_s.add_nearby_items( 1 );
-		item_location loc = inv_s.execute();
+        item_location loc = inv_s.execute();
         if( inv_s.empty() ) {
             popup( "You don't have any suitable memory cards to check." );
             return std::nullopt;
         }
-		p->mod_moves( -to_moves<int>( 1_seconds ) ); //movement to grab
-		item* mc = loc.get_item();
-		p->add_msg_if_player( m_neutral, _( "You slot in the %s to check the data." ), mc->tname() );
-		//pop up a window with list of stuff it has.
-		std::string msg = ( "This memory card has:\n" );
-		int has_recipes = 0;
-		int has_books = 0;
-		int has_photos = 0;
-		int has_music = 0;
-		if ( !mc->get_var( "EI_EXTENDED_PHOTOS" ).empty() ) {
-			//has_exphotos = true;
-			msg = ( msg + ( "Camera photos\n" ) );
-		}
-		if ( !mc->get_var( "EI_MONSTER_PHOTOS" ).empty() ) {
-			//has_monsters = true;
-			msg = ( msg + ( "Monster photos\n" ) );
-		}
-		if ( !mc->get_saved_recipes().empty() ) {
-			has_recipes = mc->get_saved_recipes().size();
-			msg = msg + std::to_string( has_recipes ) + ( " Recipes\n" );
-		} //once while testing this returned zero books, and crashed with a segmentation error upon exiting inventory. I suspect a null value snuck in but cannot reproduce it
-		if ( it->has_pocket_type( pocket_type::EBOOK ) && !it->ebooks().empty() ) {
-			has_books = mc->ebooks().size();
-			msg = msg + std::to_string( has_books ) + ( " eBooks\n" );
-		}
-		if ( !mc->get_var( "EI_PHOTOS" ).empty() ) {
-			has_photos = mc->get_var ( "EI_PHOTOS", 0 );
-			msg = msg + std::to_string( has_photos ) + ( " Unknown photos\n" );
-		}
-		if ( !mc->get_var( "EI_MUSIC" ).empty() ) {
-			has_music = mc->get_var ( "EI_MUSIC", 0 );
-			msg = msg + std::to_string( has_music ) + ( " Unknown songs\n" );
-		}
-		popup( msg );
-		return 1;
-	}
-	if ( choice == ei_delete ) {
-		std::string qstr = ( "Purge all data from this %s?" );
-		std::string res = query_popup()
-                              .context( "YES_NO" )
-                              .message( qstr, it->tname() )
-                              .option( "YES" ).option( "NO" )
-                              .query().action;
-            if( res == "YES" ) {
-				it->clear_vars();
-				std::set<recipe_id> norecipes;
-				it->set_saved_recipes( norecipes );
-				it->clear_ebooks();
-				popup( "You confirm the zeroing of all ones in your device's storage." );
-				return 1;
-			} else {
-				popup( "You chose to let your saved data live... for now." );
-				return std::nullopt;
-			}
-		return 1;
-	}
-	if ( choice == ei_delete_mc ) {
-		p->mod_moves( -to_moves<int>( 1_seconds ) );
+        p->mod_moves( -to_moves<int>( 1_seconds ) ); //movement to grab
+        item *mc = loc.get_item();
+        p->add_msg_if_player( m_neutral, _( "You slot in the %s to check the data." ), mc->tname() );
+        //pop up a window with list of stuff it has.
+        std::string msg = ( "This memory card has:\n" );
+        int has_recipes = 0;
+        int has_books = 0;
+        int has_photos = 0;
+        int has_music = 0;
+        if( !mc->get_var( "EI_EXTENDED_PHOTOS" ).empty() ) {
+            //has_exphotos = true;
+            msg = ( msg + ( "Camera photos\n" ) );
+        }
+        if( !mc->get_var( "EI_MONSTER_PHOTOS" ).empty() ) {
+            //has_monsters = true;
+            msg = ( msg + ( "Monster photos\n" ) );
+        }
+        if( !mc->get_saved_recipes().empty() ) {
+            has_recipes = mc->get_saved_recipes().size();
+            msg = msg + std::to_string( has_recipes ) + ( " Recipes\n" );
+        } //once while testing this returned zero books, and crashed with a segmentation error upon exiting inventory. I suspect a null value snuck in but cannot reproduce it
+        if( it->has_pocket_type( pocket_type::EBOOK ) && !it->ebooks().empty() ) {
+            has_books = mc->ebooks().size();
+            msg = msg + std::to_string( has_books ) + ( " eBooks\n" );
+        }
+        if( !mc->get_var( "EI_PHOTOS" ).empty() ) {
+            has_photos = mc->get_var( "EI_PHOTOS", 0 );
+            msg = msg + std::to_string( has_photos ) + ( " Unknown photos\n" );
+        }
+        if( !mc->get_var( "EI_MUSIC" ).empty() ) {
+            has_music = mc->get_var( "EI_MUSIC", 0 );
+            msg = msg + std::to_string( has_music ) + ( " Unknown songs\n" );
+        }
+        popup( msg );
+        return 1;
+    }
+    if( choice == ei_delete ) {
+        std::string qstr = ( "Purge all data from this %s?" );
+        std::string res = query_popup()
+                          .context( "YES_NO" )
+                          .message( qstr, it->tname() )
+                          .option( "YES" ).option( "NO" )
+                          .query().action;
+        if( res == "YES" ) {
+            it->clear_vars();
+            std::set<recipe_id> norecipes;
+            it->set_saved_recipes( norecipes );
+            it->clear_ebooks();
+            popup( "You confirm the zeroing of all ones in your device's storage." );
+            return 1;
+        } else {
+            popup( "You chose to let your saved data live... for now." );
+            return std::nullopt;
+        }
+        return 1;
+    }
+    if( choice == ei_delete_mc ) {
+        p->mod_moves( -to_moves<int>( 1_seconds ) );
         inventory_filter_preset preset( []( const item_location & it ) {
-                return it->has_flag( flag_MC_MOBILE ) || it->typeId() == itype_memory_card;
-            } );
-		inventory_pick_selector inv_s( *p, preset );
+            return it->has_flag( flag_MC_MOBILE ) || it->typeId() == itype_memory_card;
+        } );
+        inventory_pick_selector inv_s( *p, preset );
         inv_s.set_title( _( "Choose a memory card to wipe:" ) );
         inv_s.set_display_stats( true );
         inv_s.add_character_items( *p );
         inv_s.add_nearby_items( 1 );
-		item_location loc = inv_s.execute();
+        item_location loc = inv_s.execute();
         if( inv_s.empty() ) {
             popup( "You don't have any suitable cards to wipe." );
             return std::nullopt;
         }
-		p->mod_moves( -to_moves<int>( 1_seconds ) );
-        item* mc = loc.get_item();
-		p->add_msg_if_player( m_neutral, _( "You slot the unsuspecting %s in to purge it of data." ), mc->tname() );
+        p->mod_moves( -to_moves<int>( 1_seconds ) );
+        item *mc = loc.get_item();
+        p->add_msg_if_player( m_neutral, _( "You slot the unsuspecting %s in to purge it of data." ),
+                              mc->tname() );
 
-		std::string qstr = ( "Purge all data from this memory card?" );
-		std::string res = query_popup()
-                              .context( "YES_NO" )
-                              .message( qstr, it->tname() )
-                              .option( "YES" ).option( "NO" )
-                              .query().action;
+        std::string qstr = ( "Purge all data from this memory card?" );
+        std::string res = query_popup()
+                          .context( "YES_NO" )
+                          .message( qstr, it->tname() )
+                          .option( "YES" ).option( "NO" )
+                          .query().action;
         if( res == "YES" ) {
-			mc->clear_vars();
-			std::set<recipe_id> norecipes;
-			mc->set_saved_recipes( norecipes );
-			mc->clear_ebooks();
-			popup( ( "You confirm the zeroing of all ones on the helpless %s" ), mc->tname() ); //some stuff should stand out
-			p->add_msg_if_player( m_info, _( "The %s has been wiped clean." ), mc->tname() );	//other stuff should be remembered
-			return 1;
-		} else {
-			popup( ( "You chose to let the %s to remain intact... for now." ), mc->tname() );
-			return std::nullopt;
-		}
-	}
-	return std::nullopt;
+            mc->clear_vars();
+            std::set<recipe_id> norecipes;
+            mc->set_saved_recipes( norecipes );
+            mc->clear_ebooks();
+            popup( ( "You confirm the zeroing of all ones on the helpless %s" ),
+                   mc->tname() ); //some stuff should stand out
+            p->add_msg_if_player( m_info, _( "The %s has been wiped clean." ),
+                                  mc->tname() );   //other stuff should be remembered
+            return 1;
+        } else {
+            popup( ( "You chose to let the %s to remain intact... for now." ), mc->tname() );
+            return std::nullopt;
+        }
+    }
+    return std::nullopt;
 }
 
 std::optional<int> iuse::estorage( Character *p, item *it, const tripoint & )
@@ -5996,96 +6005,98 @@ std::optional<int> iuse::estorage( Character *p, item *it, const tripoint & )
         return std::nullopt;
     }
     if( p->is_npc() ) {
-	        debugmsg( "%s was activated by an NPC.",
-				it->typeId().str() );
+        debugmsg( "%s was activated by an NPC.",
+                  it->typeId().str() );
         return std::nullopt;
     }
     if( p->is_underwater() ) {
-        p->add_msg_if_player( m_info, _( "It seems that, like most electronics, this does not work well with water." ) );
+        p->add_msg_if_player( m_info,
+                              _( "It seems that, like most electronics, this does not work well with water." ) );
         return std::nullopt;
     }
-	if( p->is_blind() ) {
+    if( p->is_blind() ) {
         p->add_msg_if_player( _( "You can't see the screen, you're blind!" ) );
         return std::nullopt;
-	}	
-	if( p->has_flag( json_flag_HYPEROPIC ) && !p->worn_with_flag( flag_FIX_FARSIGHT ) &&
+    }
+    if( p->has_flag( json_flag_HYPEROPIC ) && !p->worn_with_flag( flag_FIX_FARSIGHT ) &&
         !p->has_effect( effect_contacts ) && !p->has_effect( effect_transition_contacts ) &&
         !p->has_flag( json_flag_ENHANCED_VISION ) ) {
         p->add_msg_if_player( m_info,
                               _( "All you can see is a blurry screen. Reading glasses would help." ) );
         return std::nullopt;
     }
-	if( p->cant_do_mounted() ) {
-		p->add_msg_if_player( m_info, _( "You cannot do that while mounted." ) );
-		return std::nullopt;
-	}
+    if( p->cant_do_mounted() ) {
+        p->add_msg_if_player( m_info, _( "You cannot do that while mounted." ) );
+        return std::nullopt;
+    }
     enum {
         ei_photo, ei_music, ei_recipe, ei_extended_photos, ei_monsters, ei_delete, ei_recover
     };
-	if( !it->active ) {
-            it->erase_var( "EI_MUSIC_ON" );
-        }
-		
-	uilist emenu;
-	emenu.text = _( "Device Storage Options:" );
+    if( !it->active ) {
+        it->erase_var( "EI_MUSIC_ON" );
+    }
 
-	if( it->has_flag( flag_EI_PHOTO_E ) ) {
-		if( !it->get_var( "EI_EXTENDED_PHOTOS" ).empty() ) {
-			emenu.addentry( ei_extended_photos, true, 'c', _( "Camera photos" ) );
-		} else {
-			emenu.addentry( ei_extended_photos, false, 'c', _( "No camera photos" ) );
-		}
-	}
-	if( it->has_flag( flag_EI_PHOTO_F ) ) {
-		const int foundphotos = it->get_var( "EI_PHOTOS", 0 );
-		if ( foundphotos > 0 ) {
-			emenu.addentry( ei_photo, true, 'p', _( "Unsorted photos of unknown origin: ( Found [%d] photos )" ), foundphotos );
-		} else {
+    uilist emenu;
+    emenu.text = _( "Device Storage Options:" );
+
+    if( it->has_flag( flag_EI_PHOTO_E ) ) {
+        if( !it->get_var( "EI_EXTENDED_PHOTOS" ).empty() ) {
+            emenu.addentry( ei_extended_photos, true, 'c', _( "Camera photos" ) );
+        } else {
+            emenu.addentry( ei_extended_photos, false, 'c', _( "No camera photos" ) );
+        }
+    }
+    if( it->has_flag( flag_EI_PHOTO_F ) ) {
+        const int foundphotos = it->get_var( "EI_PHOTOS", 0 );
+        if( foundphotos > 0 ) {
+            emenu.addentry( ei_photo, true, 'p',
+                            _( "Unsorted photos of unknown origin: ( Found [%d] photos )" ), foundphotos );
+        } else {
             emenu.addentry( ei_photo, false, 'p', _( "No unsorted photos on this device" ) );
         }
-	}
-	if( it->has_flag( flag_EI_PHOTO_M ) ) {
-		if ( !it->get_var( "EI_MONSTER_PHOTOS" ).empty() ) {
-			emenu.addentry( ei_monsters, true, 'm', _( "View Monster Collection" ) );
-		} else {
+    }
+    if( it->has_flag( flag_EI_PHOTO_M ) ) {
+        if( !it->get_var( "EI_MONSTER_PHOTOS" ).empty() ) {
+            emenu.addentry( ei_monsters, true, 'm', _( "View Monster Collection" ) );
+        } else {
             emenu.addentry( ei_monsters, false, 'm', _( "The Monster Collection is empty" ) );
         }
-	}
-	if( it->has_flag( flag_EI_RECIPE ) &&
-		!it->get_saved_recipes().empty() ) {
-		emenu.addentry( ei_recipe, true, 'r', _( "List stored recipes" ) );
-	}
-	if( it->has_flag( flag_EI_MUSIC ) ) {
-		const int eimusic = it->get_var( "EI_MUSIC", 0);
-		if( eimusic > 0 ) { //refer to the randomly found music as unknown music for flavor
+    }
+    if( it->has_flag( flag_EI_RECIPE ) &&
+        !it->get_saved_recipes().empty() ) {
+        emenu.addentry( ei_recipe, true, 'r', _( "List stored recipes" ) );
+    }
+    if( it->has_flag( flag_EI_MUSIC ) ) {
+        const int eimusic = it->get_var( "EI_MUSIC", 0 );
+        if( eimusic > 0 ) { //refer to the randomly found music as unknown music for flavor
             if( it->has_var( "EIPC_MUSIC_ON" ) ) {
                 emenu.addentry( ei_music, true, 'u', _( "Turn unknown music off" ) );
             } else {
                 emenu.addentry( ei_music, true, 'u', _( "Turn unknown music on? ( Found [%d] songs )" ), eimusic );
             }
-		}
-	}
-	if( it->has_flag( flag_EI_PHOTO_E ) ) {
-		if( !it->get_var( "EI_EXTENDED_PHOTOS" ).empty() ) {
-			emenu.addentry( ei_delete, true, 'd', _( "Delete stored photos?" ) );
-		}
-	}
-	
-	//check for legacy data types from einktablet and camera, otherwise do not give the recovery option
-	if ( !it->get_var( "CAMERA_EXTENDED_PHOTOS" ).empty() ||
-		!it->get_var( "CAMERA_MONSTER_PHOTOS" ).empty() ||
-		!it->get_var( "EINK_MONSTER_PHOTOS" ).empty() ||
-		!it->get_var( "EIPC_EXTENDED_PHOTOS" ).empty() ||
-		!it->get_var( "EIPC_MUSIC" ).empty() ||
-		!it->get_var( "EIPC_PHOTOS" ).empty()
-		) {
-		emenu.addentry( ei_recover, true, 'l', _( "Recover Legacy Data" ) );
-	}
+        }
+    }
+    if( it->has_flag( flag_EI_PHOTO_E ) ) {
+        if( !it->get_var( "EI_EXTENDED_PHOTOS" ).empty() ) {
+            emenu.addentry( ei_delete, true, 'd', _( "Delete stored photos?" ) );
+        }
+    }
+
+    //check for legacy data types from einktablet and camera, otherwise do not give the recovery option
+    if( !it->get_var( "CAMERA_EXTENDED_PHOTOS" ).empty() ||
+        !it->get_var( "CAMERA_MONSTER_PHOTOS" ).empty() ||
+        !it->get_var( "EINK_MONSTER_PHOTOS" ).empty() ||
+        !it->get_var( "EIPC_EXTENDED_PHOTOS" ).empty() ||
+        !it->get_var( "EIPC_MUSIC" ).empty() ||
+        !it->get_var( "EIPC_PHOTOS" ).empty()
+      ) {
+        emenu.addentry( ei_recover, true, 'l', _( "Recover Legacy Data" ) );
+    }
     emenu.query();
     const int choice = emenu.ret;
-	if( ei_photo == choice ) {
-		const int photos = it->get_var( "EI_PHOTOS", 0 );
-		const int viewed = std::min( photos, static_cast<int>( rng( 10, 30 ) ) );
+    if( ei_photo == choice ) {
+        const int photos = it->get_var( "EI_PHOTOS", 0 );
+        const int viewed = std::min( photos, static_cast<int>( rng( 10, 30 ) ) );
         const int count = photos - viewed;
         if( count == 0 ) {
             it->erase_var( "EI_PHOTOS" );
@@ -6186,53 +6197,56 @@ std::optional<int> iuse::estorage( Character *p, item *it, const tripoint & )
         }
         return 1;
     }
-	
-	if( ei_delete == choice ) {
-		delete_photo_selection( *p, *it, "EI_EXTENDED_PHOTOS" );
-		return 1;
-	}
-	
-	if( ei_recover == choice ) {
-		std::string report = ( "Found Legacy Data:" );
-		if( !it->get_var( "CAMERA_EXTENDED_PHOTOS" ).empty() ||
-			!it->get_var( "EIPC_EXTENDED_PHOTOS" ).empty() ) {
-			std::vector<item::extended_photo_def> extended_photos;
-			try {
-				it->read_extended_photos( extended_photos, "CAMERA_EXTENDED_PHOTOS", false );
-				it->read_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS", true );
-				it->write_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS" );
-			} catch( const JsonError &e ) {
-				debugmsg( "Error card reading photos (loaded photos = %i) : %s", extended_photos.size(), e.c_str() );
-			}
-			remove_duplicate_photos( it, "EI_EXTENDED_PHOTOS" );
-			report = ( report + "\nCamera photos" );
-			it->erase_var( "CAMERA_EXTENDED_PHOTOS" );
-			it->erase_var( "EIPC_EXTENDED_PHOTOS" );
-		}
-		
-		if( !it->get_var( "CAMERA_MONSTER_PHOTOS" ).empty() || 
-			!it->get_var( "EINK_MONSTER_PHOTOS" ).empty() ) {
-			it->set_var( "EI_MONSTER_PHOTOS", iuse::update_monsters( it->get_var( "EI_MONSTER_PHOTOS" ), it->get_var( "CAMERA_MONSTER_PHOTOS" ) ) );
-			it->set_var( "EI_MONSTER_PHOTOS", iuse::update_monsters( it->get_var( "EI_MONSTER_PHOTOS" ), it->get_var( "EINK_MONSTER_PHOTOS" ) ) );
-			report = ( report + "\nMonster Collection entries" );
-			it->erase_var( "CAMERA_MONSTER_PHOTOS" );
-			it->erase_var( "EINK_MONSTER_PHOTOS" );
-		}
-		
-		if( !it->get_var( "EIPC_PHOTOS" ).empty() ) {
-			it->set_var( "EI_PHOTOS", it->get_var( "EI_PHOTOS", 0 ) + it->get_var( "EIPC_PHOTOS", 0 ) );
-			report = ( report + "\nUnknown photos" );
-			it->erase_var( "EIPC_PHOTOS" );
-		}
-		if( !it->get_var( "EIPC_MUSIC" ).empty() ) {
-			report = ( report + "\nUnknown music" );
-			it->set_var( "EI_MUSIC", it->get_var( "EI_MUSIC", 0 ) + it->get_var( "EIPC_MUSIC", 0 ) );
-			it->erase_var( "EIPC_MUSIC" );
-		}
-		popup( report );
-		return 1;
-	}
-	return std::nullopt;
+
+    if( ei_delete == choice ) {
+        delete_photo_selection( *p, *it, "EI_EXTENDED_PHOTOS" );
+        return 1;
+    }
+
+    if( ei_recover == choice ) {
+        std::string report = ( "Found Legacy Data:" );
+        if( !it->get_var( "CAMERA_EXTENDED_PHOTOS" ).empty() ||
+            !it->get_var( "EIPC_EXTENDED_PHOTOS" ).empty() ) {
+            std::vector<item::extended_photo_def> extended_photos;
+            try {
+                it->read_extended_photos( extended_photos, "CAMERA_EXTENDED_PHOTOS", false );
+                it->read_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS", true );
+                it->write_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS" );
+            } catch( const JsonError &e ) {
+                debugmsg( "Error card reading photos (loaded photos = %i) : %s", extended_photos.size(),
+                          e.c_str() );
+            }
+            remove_duplicate_photos( it, "EI_EXTENDED_PHOTOS" );
+            report = ( report + "\nCamera photos" );
+            it->erase_var( "CAMERA_EXTENDED_PHOTOS" );
+            it->erase_var( "EIPC_EXTENDED_PHOTOS" );
+        }
+
+        if( !it->get_var( "CAMERA_MONSTER_PHOTOS" ).empty() ||
+            !it->get_var( "EINK_MONSTER_PHOTOS" ).empty() ) {
+            it->set_var( "EI_MONSTER_PHOTOS", iuse::update_monsters( it->get_var( "EI_MONSTER_PHOTOS" ),
+                         it->get_var( "CAMERA_MONSTER_PHOTOS" ) ) );
+            it->set_var( "EI_MONSTER_PHOTOS", iuse::update_monsters( it->get_var( "EI_MONSTER_PHOTOS" ),
+                         it->get_var( "EINK_MONSTER_PHOTOS" ) ) );
+            report = ( report + "\nMonster Collection entries" );
+            it->erase_var( "CAMERA_MONSTER_PHOTOS" );
+            it->erase_var( "EINK_MONSTER_PHOTOS" );
+        }
+
+        if( !it->get_var( "EIPC_PHOTOS" ).empty() ) {
+            it->set_var( "EI_PHOTOS", it->get_var( "EI_PHOTOS", 0 ) + it->get_var( "EIPC_PHOTOS", 0 ) );
+            report = ( report + "\nUnknown photos" );
+            it->erase_var( "EIPC_PHOTOS" );
+        }
+        if( !it->get_var( "EIPC_MUSIC" ).empty() ) {
+            report = ( report + "\nUnknown music" );
+            it->set_var( "EI_MUSIC", it->get_var( "EI_MUSIC", 0 ) + it->get_var( "EIPC_MUSIC", 0 ) );
+            it->erase_var( "EIPC_MUSIC" );
+        }
+        popup( report );
+        return 1;
+    }
+    return std::nullopt;
 }
 
 static std::string colorized_trap_name_at( const tripoint &point )
@@ -6897,7 +6911,7 @@ static item::extended_photo_def photo_def_for_camera_point( const tripoint &aim_
                                           colorize( timestamp, c_light_blue ) );
 
     photo.description = photo_text;
-	if( photo.description.compare( photo_text ) ) {}
+    if( photo.description.compare( photo_text ) ) {}
     return photo;
 }
 
@@ -6926,7 +6940,7 @@ static void item_save_monsters( Character &p, item &it, const std::vector<monste
             const size_t quality_num_pos = mon_str_pos + mtype.size() + 2;
             const size_t next_comma = monster_photos.find( ',', quality_num_pos );
             const int old_quality =
-                 get_quality_from_string( monster_photos.substr( quality_num_pos, next_comma - quality_num_pos ) );
+                get_quality_from_string( monster_photos.substr( quality_num_pos, next_comma - quality_num_pos ) );
 
             if( photo_quality > old_quality ) {
                 const std::string quality_s = string_format( "%d", photo_quality );
@@ -6983,23 +6997,23 @@ void item::write_extended_photos( const std::vector<extended_photo_def> &extende
 
 void iuse::remove_duplicate_photos( item *it, const std::string &var_name )
 {
-	std::vector<item::extended_photo_def> extended_photos;
-	std::vector<std::string> photo_checker;
-	std::vector<item::extended_photo_def> checked_photos;
-	try {
-		it->read_extended_photos( extended_photos, var_name, true );
-		for( const auto& current : extended_photos ) {
-			std::string sample = current.description;
-			auto dupe_test = std::find( photo_checker.begin(), photo_checker.end(), sample );
-			if ( dupe_test == photo_checker.end() ) {
-				checked_photos.push_back( current );
-				photo_checker.push_back( sample );
-			}
-		}
-	} catch( const JsonError &e ) { 
-		debugmsg( "Error reading from %s", var_name );
-	}
-	it->write_extended_photos( checked_photos, var_name );
+    std::vector<item::extended_photo_def> extended_photos;
+    std::vector<std::string> photo_checker;
+    std::vector<item::extended_photo_def> checked_photos;
+    try {
+        it->read_extended_photos( extended_photos, var_name, true );
+        for( const auto &current : extended_photos ) {
+            std::string sample = current.description;
+            auto dupe_test = std::find( photo_checker.begin(), photo_checker.end(), sample );
+            if( dupe_test == photo_checker.end() ) {
+                checked_photos.push_back( current );
+                photo_checker.push_back( sample );
+            }
+        }
+    } catch( const JsonError &e ) {
+        debugmsg( "Error reading from %s", var_name );
+    }
+    it->write_extended_photos( checked_photos, var_name );
 }
 
 static bool show_photo_selection( Character &p, item &it, const std::string &var_name )
@@ -7104,53 +7118,53 @@ void delete_photo_selection( Character &p, item &it, const std::string &var_name
     pmenu.query();
     choice = pmenu.ret;
     extended_photos.erase( extended_photos.begin() + choice );
-	if( extended_photos.empty() ) {
-		it.erase_var( var_name );
-	} else {
-		it.write_extended_photos( extended_photos, var_name );
-	}
-	return;	
+    if( extended_photos.empty() ) {
+        it.erase_var( var_name );
+    } else {
+        it.write_extended_photos( extended_photos, var_name );
+    }
+    return;
 }
 
-std::string iuse::update_monsters( std::string old_mons, std::string new_mons)
+std::string iuse::update_monsters( std::string old_mons, std::string new_mons )
 {
-	if( !new_mons.empty() ) {
-		if( old_mons.empty() ) {
-			return new_mons;
-		} else {
-			std::istringstream f( new_mons );
-			std::string s;
-			while( getline( f, s, ',' ) ) {
-				if( s.empty() ) {
-					continue;
-				}
-				const std::string mtype = s;
-				getline( f, s, ',' );
-				const int quality = get_quality_from_string( s );
+    if( !new_mons.empty() ) {
+        if( old_mons.empty() ) {
+            return new_mons;
+        } else {
+            std::istringstream f( new_mons );
+            std::string s;
+            while( getline( f, s, ',' ) ) {
+                if( s.empty() ) {
+                    continue;
+                }
+                const std::string mtype = s;
+                getline( f, s, ',' );
+                const int quality = get_quality_from_string( s );
 
-				const size_t old_strpos = old_mons.find( "," + mtype + "," );
+                const size_t old_strpos = old_mons.find( "," + mtype + "," );
 
-				if( old_strpos == std::string::npos ) {
-					old_mons += mtype + "," + string_format( "%d", quality ) + ",";
-				} else {
-					const size_t strqpos = old_strpos + mtype.size() + 2;
-					const size_t next_comma = old_mons.find( ',', strqpos );
-					std::string old_s = old_mons.substr( strqpos, next_comma );
-					old_s.resize( 1 );
-					const int old_quality =
-						get_quality_from_string( old_s );
+                if( old_strpos == std::string::npos ) {
+                    old_mons += mtype + "," + string_format( "%d", quality ) + ",";
+                } else {
+                    const size_t strqpos = old_strpos + mtype.size() + 2;
+                    const size_t next_comma = old_mons.find( ',', strqpos );
+                    std::string old_s = old_mons.substr( strqpos, next_comma );
+                    old_s.resize( 1 );
+                    const int old_quality =
+                        get_quality_from_string( old_s );
 
-					if( quality > old_quality ) {
-						const std::string quality_s = string_format( "%d", quality );
-						cata_assert( quality_s.size() == 1 );
-						old_mons[strqpos] = quality_s.front();
-					}
-				}
+                    if( quality > old_quality ) {
+                        const std::string quality_s = string_format( "%d", quality );
+                        cata_assert( quality_s.size() == 1 );
+                        old_mons[strqpos] = quality_s.front();
+                    }
+                }
 
-			}
-		}
-	}
-	return old_mons;
+            }
+        }
+    }
+    return old_mons;
 }
 
 //test function for altered code
@@ -7165,145 +7179,145 @@ std::optional<int> iuse::camera( Character *p, item *it, const tripoint & )
 
     map &here = get_map();
     creature_tracker &creatures = get_creature_tracker();
-        const std::optional<tripoint> aim_point_ = g->look_around();
+    const std::optional<tripoint> aim_point_ = g->look_around();
 
-        if( !aim_point_ ) {
-            p->add_msg_if_player( _( "Never mind." ) );
-            return std::nullopt;
+    if( !aim_point_ ) {
+        p->add_msg_if_player( _( "Never mind." ) );
+        return std::nullopt;
+    }
+    tripoint aim_point = *aim_point_;
+    bool incorrect_focus = false;
+    tripoint_range<tripoint> aim_bounds = here.points_in_radius( aim_point, 2 );
+
+    std::vector<tripoint> trajectory = line_to( p->pos(), aim_point, 0, 0 );
+    trajectory.push_back( aim_point );
+
+    p->mod_moves( -to_moves<int>( 1_seconds ) * 0.5 );
+    sounds::sound( p->pos(), 8, sounds::sound_t::activity, _( "Click." ), true, "tool",
+                   "camera_shutter" );
+
+    for( std::vector<tripoint>::iterator point_it = trajectory.begin();
+         point_it != trajectory.end();
+         ++point_it ) {
+        const tripoint trajectory_point = *point_it;
+        if( point_it != trajectory.end() ) {
+            const tripoint next_point = *( point_it + 1 ); // Trajectory ends on last visible tile
+            if( !here.sees( p->pos(), next_point, rl_dist( p->pos(), next_point ) + 3 ) ) {
+                p->add_msg_if_player( _( "You have the wrong camera focus." ) );
+                incorrect_focus = true;
+                // recalculate target point
+                aim_point = trajectory_point;
+                aim_bounds = here.points_in_radius( trajectory_point, 2 );
+            }
         }
-        tripoint aim_point = *aim_point_;
-        bool incorrect_focus = false;
-        tripoint_range<tripoint> aim_bounds = here.points_in_radius( aim_point, 2 );
 
-        std::vector<tripoint> trajectory = line_to( p->pos(), aim_point, 0, 0 );
-        trajectory.push_back( aim_point );
+        monster *const mon = creatures.creature_at<monster>( trajectory_point, true );
+        Character *const guy = creatures.creature_at<Character>( trajectory_point );
+        if( mon || guy || trajectory_point == aim_point ) {
+            int dist = rl_dist( p->pos(), trajectory_point );
 
-        p->mod_moves( -to_moves<int>( 1_seconds ) * 0.5 );
-        sounds::sound( p->pos(), 8, sounds::sound_t::activity, _( "Click." ), true, "tool",
-                       "camera_shutter" );
+            int camera_bonus = it->has_flag( flag_CAMERA_PRO ) ? 10 : 0;
+            int photo_quality = 20 - rng( dist, dist * 2 ) * 2 + rng( camera_bonus / 2, camera_bonus );
+            if( photo_quality > 5 ) {
+                photo_quality = 5;
+            }
+            if( photo_quality < 0 ) {
+                photo_quality = 0;
+            }
+            if( p->is_blind() ) {
+                photo_quality /= 2;
+            }
 
-        for( std::vector<tripoint>::iterator point_it = trajectory.begin();
-             point_it != trajectory.end();
-             ++point_it ) {
-            const tripoint trajectory_point = *point_it;
-            if( point_it != trajectory.end() ) {
-                const tripoint next_point = *( point_it + 1 ); // Trajectory ends on last visible tile
-                if( !here.sees( p->pos(), next_point, rl_dist( p->pos(), next_point ) + 3 ) ) {
-                    p->add_msg_if_player( _( "You have the wrong camera focus." ) );
+            if( mon ) {
+                monster &z = *mon;
+
+                // shoot past small monsters and hallucinations
+                if( trajectory_point != aim_point && ( z.type->size <= creature_size::small ||
+                                                       z.is_hallucination() ||
+                                                       z.type->in_species( species_HALLUCINATION ) ) ) {
+                    continue;
+                }
+                if( !aim_bounds.is_point_inside( trajectory_point ) ) {
+                    // take a photo of the monster that's in the way
+                    p->add_msg_if_player( m_warning, _( "A %s got in the way of your photo." ), z.name() );
                     incorrect_focus = true;
-                    // recalculate target point
-                    aim_point = trajectory_point;
-                    aim_bounds = here.points_in_radius( trajectory_point, 2 );
+                } else if( trajectory_point != aim_point ) { // shoot past mon that will be in photo anyway
+                    continue;
+                }
+                // get a special message if the target is a hallucination
+                if( trajectory_point == aim_point && ( z.is_hallucination() ||
+                                                       z.type->in_species( species_HALLUCINATION ) ) ) {
+                    p->add_msg_if_player( _( "Strange… there's nothing in the center of this picture?" ) );
+                }
+            } else if( guy ) {
+                if( trajectory_point == aim_point && guy->is_hallucination() ) {
+                    p->add_msg_if_player( _( "Strange… %s isn't visible on the picture?" ), guy->get_name() );
+                } else if( !aim_bounds.is_point_inside( trajectory_point ) ) {
+                    // take a photo of the monster that's in the way
+                    p->add_msg_if_player( m_warning, _( "%s got in the way of your photo." ), guy->get_name() );
+                    incorrect_focus = true;
+                } else if( trajectory_point != aim_point ) {  // shoot past guy that will be in photo anyway
+                    continue;
                 }
             }
+            if( incorrect_focus ) {
+                photo_quality = photo_quality == 0 ? 0 : photo_quality - 1;
+            }
 
-            monster *const mon = creatures.creature_at<monster>( trajectory_point, true );
-            Character *const guy = creatures.creature_at<Character>( trajectory_point );
-            if( mon || guy || trajectory_point == aim_point ) {
-                int dist = rl_dist( p->pos(), trajectory_point );
+            std::vector<item::extended_photo_def> extended_photos;
+            std::vector<monster *> monster_vec;
+            std::vector<Character *> character_vec;
+            item::extended_photo_def photo = photo_def_for_camera_point( trajectory_point, p->pos(),
+                                             monster_vec, character_vec );
+            photo.quality = photo_quality;
 
-                int camera_bonus = it->has_flag( flag_CAMERA_PRO ) ? 10 : 0;
-                int photo_quality = 20 - rng( dist, dist * 2 ) * 2 + rng( camera_bonus / 2, camera_bonus );
-                if( photo_quality > 5 ) {
-                    photo_quality = 5;
-                }
-                if( photo_quality < 0 ) {
-                    photo_quality = 0;
-                }
+            try {
+                it->read_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS", false );
+                extended_photos.push_back( photo );
+                it->write_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS" );
+            } catch( const JsonError &e ) {
+                debugmsg( "Error when adding new photo (loaded photos = %i): %s", extended_photos.size(),
+                          e.c_str() );
+            }
+
+            const bool selfie = std::find( character_vec.begin(), character_vec.end(),
+                                           p ) != character_vec.end();
+
+            if( selfie ) {
+                p->add_msg_if_player( _( "You took a selfie." ) );
+            } else {
                 if( p->is_blind() ) {
-                    photo_quality /= 2;
-                }
-
-                if( mon ) {
-                    monster &z = *mon;
-
-                    // shoot past small monsters and hallucinations
-                    if( trajectory_point != aim_point && ( z.type->size <= creature_size::small ||
-                                                           z.is_hallucination() ||
-                                                           z.type->in_species( species_HALLUCINATION ) ) ) {
-                        continue;
-                    }
-                    if( !aim_bounds.is_point_inside( trajectory_point ) ) {
-                        // take a photo of the monster that's in the way
-                        p->add_msg_if_player( m_warning, _( "A %s got in the way of your photo." ), z.name() );
-                        incorrect_focus = true;
-                    } else if( trajectory_point != aim_point ) { // shoot past mon that will be in photo anyway
-                        continue;
-                    }
-                    // get a special message if the target is a hallucination
-                    if( trajectory_point == aim_point && ( z.is_hallucination() ||
-                                                           z.type->in_species( species_HALLUCINATION ) ) ) {
-                        p->add_msg_if_player( _( "Strange… there's nothing in the center of this picture?" ) );
-                    }
-                } else if( guy ) {
-                    if( trajectory_point == aim_point && guy->is_hallucination() ) {
-                        p->add_msg_if_player( _( "Strange… %s isn't visible on the picture?" ), guy->get_name() );
-                    } else if( !aim_bounds.is_point_inside( trajectory_point ) ) {
-                        // take a photo of the monster that's in the way
-                        p->add_msg_if_player( m_warning, _( "%s got in the way of your photo." ), guy->get_name() );
-                        incorrect_focus = true;
-                    } else if( trajectory_point != aim_point ) {  // shoot past guy that will be in photo anyway
-                        continue;
-                    }
-                }
-                if( incorrect_focus ) {
-                    photo_quality = photo_quality == 0 ? 0 : photo_quality - 1;
-                }
-
-                std::vector<item::extended_photo_def> extended_photos;
-                std::vector<monster *> monster_vec;
-                std::vector<Character *> character_vec;
-                item::extended_photo_def photo = photo_def_for_camera_point( trajectory_point, p->pos(),
-                                                 monster_vec, character_vec );
-                photo.quality = photo_quality;
-
-                try {
-					it->read_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS", false );
-                    extended_photos.push_back( photo );
-                    it->write_extended_photos( extended_photos, "EI_EXTENDED_PHOTOS" );
-                } catch( const JsonError &e ) {
-                    debugmsg( "Error when adding new photo (loaded photos = %i): %s", extended_photos.size(),
-                              e.c_str() );
-                }
-
-                const bool selfie = std::find( character_vec.begin(), character_vec.end(),
-                                               p ) != character_vec.end();
-
-                if( selfie ) {
-                    p->add_msg_if_player( _( "You took a selfie." ) );
+                    p->add_msg_if_player( _( "You took a photo of %s." ), photo.name );
                 } else {
-                    if( p->is_blind() ) {
-                        p->add_msg_if_player( _( "You took a photo of %s." ), photo.name );
-                    } else {
-                        p->add_msg_if_player( _( "You took a photo of %1$s. It is %2$s." ), photo.name,
-                                              photo_quality_name( photo_quality ) );
-                    }
-                    std::vector<std::string> blinded_names;
-                    for( monster * const &monster_p : monster_vec ) {
-                        if( dist < 4 && one_in( dist + 2 ) && monster_p->has_flag( mon_flag_SEES ) ) {
-                            monster_p->add_effect( effect_blind, rng( 5_turns, 10_turns ) );
-                            blinded_names.push_back( monster_p->name() );
-                        }
-                    }
-                    for( Character * const &character_p : character_vec ) {
-                        if( dist < 4 && one_in( dist + 2 ) && !character_p->is_blind() ) {
-                            character_p->add_effect( effect_blind, rng( 5_turns, 10_turns ) );
-                            blinded_names.push_back( character_p->get_name() );
-                        }
-                    }
-                    if( !blinded_names.empty() ) {
-                        p->add_msg_if_player( _( "%s looks blinded." ), enumerate_as_string( blinded_names.begin(),
-                        blinded_names.end(), []( const std::string & it ) {
-                            return colorize( it, c_light_blue );
-                        } ) );
+                    p->add_msg_if_player( _( "You took a photo of %1$s. It is %2$s." ), photo.name,
+                                          photo_quality_name( photo_quality ) );
+                }
+                std::vector<std::string> blinded_names;
+                for( monster * const &monster_p : monster_vec ) {
+                    if( dist < 4 && one_in( dist + 2 ) && monster_p->has_flag( mon_flag_SEES ) ) {
+                        monster_p->add_effect( effect_blind, rng( 5_turns, 10_turns ) );
+                        blinded_names.push_back( monster_p->name() );
                     }
                 }
-                if( !monster_vec.empty() ) {
-                    item_save_monsters( *p, *it, monster_vec, photo_quality );
+                for( Character * const &character_p : character_vec ) {
+                    if( dist < 4 && one_in( dist + 2 ) && !character_p->is_blind() ) {
+                        character_p->add_effect( effect_blind, rng( 5_turns, 10_turns ) );
+                        blinded_names.push_back( character_p->get_name() );
+                    }
                 }
-                return 1;
+                if( !blinded_names.empty() ) {
+                    p->add_msg_if_player( _( "%s looks blinded." ), enumerate_as_string( blinded_names.begin(),
+                    blinded_names.end(), []( const std::string & it ) {
+                        return colorize( it, c_light_blue );
+                    } ) );
+                }
             }
+            if( !monster_vec.empty() ) {
+                item_save_monsters( *p, *it, monster_vec, photo_quality );
+            }
+            return 1;
         }
+    }
     return 1;
 }
 

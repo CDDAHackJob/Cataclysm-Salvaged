@@ -37,3 +37,6 @@
 *.png     binary
 *.ttf     binary
 
+#Pin githooks as lf, not crlf.
+#Keeps things unix style (not windows) helps prevent scripts from breaking.
+tools/hooks/* text eol=lf

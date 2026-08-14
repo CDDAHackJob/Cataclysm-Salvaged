@@ -1,0 +1,225 @@
+#!/bin/sh
+# Format-check staged files before they are committed.
+#
+# Both tools below FIX the file in place and then report failure, so a blocked
+# commit leaves the corrected file sitting in the working tree: review it,
+# `git add` it, and commit again.
+#
+# Install:  git config core.hooksPath tools/hooks
+# Bypass:   git commit --no-verify
+#
+# See doc/DEVELOPER_TOOLING.md, doc/CODE_STYLE.md and doc/JSON_STYLE.md.
+
+# --- environment guards -----------------------------------------------------
+#
+# This is a tracked file, so it reaches every clone and every CI checkout.  It
+# stays inert until core.hooksPath points at it, but once enabled it should
+# still refuse to act in contexts where reformatting would be wrong.  Each guard
+# below exits 0: declining to check is never a reason to block a commit.
+
+# A bare or server-side repository has no working tree to format.
+[ "$( git rev-parse --is-bare-repository 2>/dev/null )" = "false" ] || exit 0
+
+# Act only on this project.  core.hooksPath can be set globally, and this file
+# can be copied; without this the tools below would run against a tree that has
+# no .astylerc and no json_formatter, or worse, a different project's.
+root=$( git rev-parse --show-toplevel 2>/dev/null ) || exit 0
+[ -f "$root/.astylerc" ] && [ -d "$root/tools/format" ] || exit 0
+cd "$root" || exit 0
+
+# Automated environments run the real checks themselves; a commit made by a
+# workflow (weekly-changelog commits a generated file) must not be reformatted.
+# Testing for "set to anything" is wrong here: CI=false is a real convention for
+# "not CI", and treating it as truthy would silently disable every check below.
+case "${CI:-}" in
+    '' | 0 | [Ff]alse | [Nn]o ) ;;
+    * ) exit 0 ;;
+esac
+
+# A merge, rebase, cherry-pick or revert stages far more than the author is
+# editing -- during a merge the index holds every file the incoming branch
+# touched.  Formatting there would rewrite files unrelated to the change and
+# block an operation that is midway through.
+git_dir=$( git rev-parse --git-dir )
+for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD rebase-merge rebase-apply; do
+    if [ -e "$git_dir/$marker" ]; then
+        echo "pre-commit: $marker present; skipping the style checks." >&2
+        exit 0
+    fi
+done
+
+fail=0
+
+# On a repository with no commits yet, HEAD does not resolve and every git-diff
+# below would print "fatal: bad revision 'HEAD'".  Compare against the empty
+# tree instead, which makes the first commit behave like an all-files addition.
+if git rev-parse --verify --quiet HEAD >/dev/null; then
+    against=HEAD
+else
+    against=$( git hash-object -t tree /dev/null )
+fi
+
+# --- what is staged, in each tool's scope -----------------------------------
+#
+# The C++ pathspecs reproduce the Makefile's ASTYLE_SOURCES exactly.  `:(glob)` is
+# required: it stops `*` from matching `/`, which is what make's $(wildcard)
+# does.  Without it git would recurse and pick up src/third-party/ -- 39
+# vendored imgui and flatbuffers files that the Makefile deliberately keeps out
+# of ASTYLE_SOURCES.  object_creator/ is likewise absent because the Makefile's
+# OBJECT_CREATOR_SOURCES reads `$object_creator/*.cpp`, where `$o` is an
+# undefined single-character variable, so upstream never astyles it either.
+
+# Both lists are emitted NUL-separated by a function rather than held in a
+# variable, and are piped straight into xargs.  Command substitution discards
+# NUL bytes, so capturing one would glue every path into a single argument; and
+# converting to newlines instead would split any path that contains one.
+#
+# --diff-filter=ACMR is exact at both edges.  Dropping D matters: a staged
+# DELETION is still a staged path, so without the filter the formatter is handed
+# a file that is no longer there, reports "Failed to open", and blocks a commit
+# whose only crime is removing a file -- the defect in the hook recipe printed in
+# doc/DEVELOPER_TOOLING.md.  Keeping R matters just as much in the other
+# direction: git reports a renamed-and-edited file as R, so ACM alone would let
+# it through unchecked.  --name-only yields the destination path for a rename,
+# which is the one to format.
+
+staged_cpp() {
+    git diff --cached --name-only --diff-filter=ACMR -z "$against" -- \
+        ':(glob)src/*.cpp'                        ':(glob)src/*.h'   \
+        ':(glob)src/chkjson/*.cpp'                                   \
+        ':(glob)tests/*.cpp'                      ':(glob)tests/*.h' \
+        ':(glob)tools/format/*.cpp'               ':(glob)tools/format/*.h' \
+        ':(glob)tools/clang-tidy-plugin/*.cpp'    ':(glob)tools/clang-tidy-plugin/*.h' \
+        ':(glob)tools/clang-tidy-plugin/*/*.cpp'  ':(glob)tools/clang-tidy-plugin/*/*.h'
+}
+
+# data/ only -- see the JSON section below for why the other 45 are excluded.
+staged_json() {
+    git diff --cached --name-only --diff-filter=ACMR -z "$against" -- 'data/*.json'
+}
+
+# Both tools read and rewrite the WORKING TREE copy of a file, which is not
+# necessarily the copy being committed.  Where the two differ the hook cannot
+# vouch for what is about to land, and passing would be a false assurance --
+# measurably so: block a commit, let the tools correct the working tree, then
+# run `git commit` again without re-staging, and the checks now see the
+# corrected file and wave the original unformatted content straight through.
+#
+# So this fails rather than warns.  It does not return early: the tools below
+# still run and still fix the working tree, so `git add` and commit again is
+# all that is needed.
+mixed=$( { staged_cpp; staged_json; } | xargs -r -0 -s 8000 git diff --name-only -- )
+if [ -n "$mixed" ]; then
+    echo "pre-commit: these differ between the index and the working tree, so the" >&2
+    echo "            checks cannot verify what is actually being committed:" >&2
+    printf '%s\n' "$mixed" | sed 's/^/              /' >&2
+    echo "            \`git add\` them (or restore them) and commit again." >&2
+    fail=1
+fi
+
+# --- C++ (astyle) -----------------------------------------------------------
+#
+# doc/CODE_STYLE.md: "We are using astyle version 3.1. Other versions of astyle
+# produce different formatting and should not be used."  This is enforced rather
+# than trusted, because package managers ship newer releases: MSYS2 offers only
+# 3.6.13, and formatting with it would put every file touched permanently at
+# odds with CI.  The matching Windows build is AStyle_3.1_windows.zip from
+# https://sourceforge.net/projects/astyle/files/astyle/astyle%203.1/
+# Rename its AStyle.exe to astyle.exe when putting it on PATH.
+
+if [ -n "$( staged_cpp | tr -d '\0' )" ]; then
+    if ! command -v astyle >/dev/null 2>&1; then
+        echo "pre-commit: astyle not found; skipping the C++ style check." >&2
+        echo "            Install version 3.1 -- see doc/CODE_STYLE.md." >&2
+    else
+        version=$( astyle --version 2>&1 )
+        number=$( printf '%s' "$version" | sed -n 's/.*[Vv]ersion  *\([0-9][0-9.]*\).*/\1/p' )
+        if [ "$number" != "3.1" ]; then
+            echo "pre-commit: wrong astyle version -- found \"$version\"." >&2
+            echo "            doc/CODE_STYLE.md requires exactly 3.1; other versions" >&2
+            echo "            produce different formatting.  Refusing to run it." >&2
+            fail=1
+        else
+            # -n suppresses .orig backups; -Q prints a line only for files it
+            # actually changed, and nothing at all otherwise.  astyle exits 0
+            # whether or not it reformatted, so the output is the signal and a
+            # non-zero status means the tool itself failed.
+            #
+            # --lineend=linux because astyle otherwise PRESERVES the line
+            # endings it finds, so on a CRLF working tree it would write CRLF
+            # back out.  json_formatter already writes LF unconditionally (it
+            # opens the file std::ios::binary and strips \r on Windows), so
+            # this makes the two agree and keeps the working tree matching what
+            # CI and the repository actually hold.
+            #
+            # One consequence, if a working tree ever does hold CRLF: a file
+            # whose style is already correct still reports "Formatted", because
+            # the line endings changed.  `git diff` will then show nothing at
+            # all -- it compares normalised content -- which reads as a false
+            # alarm but is not one.  Re-stage and it settles permanently.
+            # -s 8000 caps each command line.  Staging the whole astyle scope
+            # builds 28 kB of paths, and MSYS2's astyle is a native Windows
+            # binary, so exec goes through CreateProcess and its 32,767-char
+            # limit -- close enough to trip over.  Capping splits the work into
+            # several invocations, whose outputs concatenate and whose statuses
+            # xargs already folds into one.
+            formatted=$( staged_cpp \
+                | xargs -r -0 -s 8000 astyle --options=.astylerc -n -Q --lineend=linux 2>&1 )
+            status=$?
+            if [ "$status" -ne 0 ]; then
+                printf '%s\n' "$formatted" >&2
+                echo "pre-commit: astyle exited $status; the C++ style check did not run." >&2
+                fail=1
+            elif [ -n "$formatted" ]; then
+                printf '%s\n' "$formatted" >&2
+                echo "pre-commit: astyle reformatted the files above; review and re-stage them." >&2
+                fail=1
+            fi
+        fi
+    fi
+fi
+
+# --- JSON (json_formatter) --------------------------------------------------
+#
+# Built from tools/format/ by `make style-json`, so it can never disagree with
+# CI.  .cgi on POSIX, .exe on Windows.
+#
+# Scoped to data/ because that is the whole of CI's scope -- json.yml runs
+# `make style-all-json-parallel`, which is `find data -name "*.json"`.  The
+# other 45 JSON files in the tree must be left alone: .vscode/settings.json and
+# .devcontainer/*.json are JSONC and carry comments that this parser rejects, so
+# formatting them would hard-block a legitimate commit, and CMakePresets.json
+# and .github/vcpkg_ports/*/vcpkg.json answer to other tools' schemas.
+
+# .exe is tried first.  A clone built on both platforms can hold a Linux .cgi
+# beside a Windows .exe, and a glob would take them in alphabetical order --
+# picking the .cgi, which cannot execute on Windows.
+formatter=
+for candidate in ./tools/format/json_formatter.exe ./tools/format/json_formatter.cgi; do
+    if [ -x "$candidate" ]; then
+        formatter=$candidate
+        break
+    fi
+done
+
+# -n 1 because json_formatter takes exactly one filename ("Expect a single
+# filename for now") and exits EXIT_FAILURE if handed more.
+
+if [ -z "$formatter" ]; then
+    if [ -n "$( staged_json | tr -d '\0' )" ]; then
+        echo "pre-commit: json_formatter not built; skipping the JSON style check." >&2
+        echo "            Build it with \`make style-json\` -- see doc/JSON_STYLE.md." >&2
+    fi
+else
+    # Everything this hook says goes to stderr, including the formatter's own
+    # "Has been linted" lines.  stdout is block-buffered when it is not a
+    # terminal, so a GUI or `git commit 2>&1 | tee` would otherwise show the
+    # "commit blocked" summary before the list of files it refers to.
+    staged_json | xargs -r -0 -n 1 "$formatter" >&2 || fail=1
+fi
+
+if [ "$fail" -ne 0 ]; then
+    echo "pre-commit: commit blocked.  Re-stage the corrected files, or use --no-verify." >&2
+fi
+
+exit "$fail"

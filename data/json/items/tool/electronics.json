@@ -18,8 +18,7 @@
     "//": "swappable, but proprietary 80g Li-Ion battery",
     "pocket_data": [ { "pocket_type": "MAGAZINE", "rigid": true, "ammo_restriction": { "battery": 50 } } ],
     "melee_damage": { "bash": 1 }
-  }, 
-  
+  },
   {
     "id": "camera_pro",
     "type": "TOOL",
@@ -35,7 +34,18 @@
     "ammo": [ "battery" ],
     "charges_per_use": 5,
     "use_action": [ "CAMERA", "EMOVEDATA", "ESTORAGE" ],
-    "flags": [ "NO_UNLOAD", "NO_RELOAD", "CAMERA_PRO", "ALWAYS_TWOHAND", "WATER_BREAK_ACTIVE", "ELECTRONIC", "EI_PHOTO_E", "EI_PHOTO_M", "EI_UPLOAD", "EI_DNLOAD" ],
+    "flags": [
+      "NO_UNLOAD",
+      "NO_RELOAD",
+      "CAMERA_PRO",
+      "ALWAYS_TWOHAND",
+      "WATER_BREAK_ACTIVE",
+      "ELECTRONIC",
+      "EI_PHOTO_E",
+      "EI_PHOTO_M",
+      "EI_UPLOAD",
+      "EI_DNLOAD"
+    ],
     "//": "swappable, but proprietary 160g Li-Ion battery",
     "pocket_data": [ { "pocket_type": "MAGAZINE", "rigid": true, "ammo_restriction": { "battery": 100 } } ],
     "melee_damage": { "bash": 1 }
@@ -152,8 +162,21 @@
       },
       { "type": "link_up", "cable_length": 4, "charge_rate": "10 W" }
     ],
-    "flags": [ "NO_UNLOAD", "NO_RELOAD", "WATCH", "WATER_BREAK", "ELECTRONIC", "EI_DNLOAD", "EI_UPLOAD",
-	           "EI_BOOK", "EI_RECIPE", "EI_PHOTO_E", "EI_PHOTO_M", "EI_PHOTO_F", "EI_MUSIC" ],
+    "flags": [
+      "NO_UNLOAD",
+      "NO_RELOAD",
+      "WATCH",
+      "WATER_BREAK",
+      "ELECTRONIC",
+      "EI_DNLOAD",
+      "EI_UPLOAD",
+      "EI_BOOK",
+      "EI_RECIPE",
+      "EI_PHOTO_E",
+      "EI_PHOTO_M",
+      "EI_PHOTO_F",
+      "EI_MUSIC"
+    ],
     "pocket_data": [
       { "pocket_type": "MAGAZINE", "rigid": true, "ammo_restriction": { "battery": 85 } },
       {
@@ -380,8 +403,23 @@
       },
       { "type": "link_up", "cable_length": 5, "charge_rate": "140 W" }
     ],
-    "flags": [ "NO_UNLOAD", "NO_RELOAD", "WATCH", "WATER_BREAK", "ELECTRONIC", "ALLOWS_REMOTE_USE",
-               "EI_PHOTO_E", "EI_PHOTO_F", "EI_PHOTO_M", "EI_RECIPE", "EI_BOOK", "EI_MUSIC", "EI_UPLOAD", "EI_DNLOAD", "EI_CHECK" ],
+    "flags": [
+      "NO_UNLOAD",
+      "NO_RELOAD",
+      "WATCH",
+      "WATER_BREAK",
+      "ELECTRONIC",
+      "ALLOWS_REMOTE_USE",
+      "EI_PHOTO_E",
+      "EI_PHOTO_F",
+      "EI_PHOTO_M",
+      "EI_RECIPE",
+      "EI_BOOK",
+      "EI_MUSIC",
+      "EI_UPLOAD",
+      "EI_DNLOAD",
+      "EI_CHECK"
+    ],
     "pocket_data": [
       { "pocket_type": "MAGAZINE", "rigid": true, "ammo_restriction": { "battery": 200 } },
       {
@@ -403,7 +441,7 @@
     "revert_to": "laptop",
     "use_action": [
       "EMOVEDATA",
-	  "ESTORAGE",
+      "ESTORAGE",
       "EBOOKSAVE",
       "EBOOKREAD",
       "PORTABLE_GAME",
@@ -625,8 +663,25 @@
       },
       { "type": "link_up", "cable_length": 3, "charge_rate": "20 W" }
     ],
-    "flags": [ "WATCH", "ALARMCLOCK", "USE_UPS", "NO_UNLOAD", "NO_RELOAD", "WATER_BREAK", "CALORIES_INTAKE", "ELECTRONIC", 
-	           "EI_PHOTO_E", "EI_PHOTO_F", "EI_PHOTO_M", "EI_RECIPE", "EI_BOOK", "EI_MUSIC", "EI_UPLOAD", "EI_DNLOAD", "EI_CHECK" ],
+    "flags": [
+      "WATCH",
+      "ALARMCLOCK",
+      "USE_UPS",
+      "NO_UNLOAD",
+      "NO_RELOAD",
+      "WATER_BREAK",
+      "CALORIES_INTAKE",
+      "ELECTRONIC",
+      "EI_PHOTO_E",
+      "EI_PHOTO_F",
+      "EI_PHOTO_M",
+      "EI_RECIPE",
+      "EI_BOOK",
+      "EI_MUSIC",
+      "EI_UPLOAD",
+      "EI_DNLOAD",
+      "EI_CHECK"
+    ],
     "pocket_data": [
       { "pocket_type": "MAGAZINE", "rigid": true, "ammo_restriction": { "battery": 56 } },
       {

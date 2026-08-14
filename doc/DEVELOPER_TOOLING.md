@@ -14,7 +14,7 @@ make astyle-check || exit 1
 ```
 Alternate version by HackJob (and claude opus, after a bunch of testing and reworks to make sure it worked properly)
 ```BASH
-git diff --cached --name-only --diff-filter-ACMR -z HEAD | grep -z 'data/.*\.json' | \
+git diff --cached --name-only --diff-filter=ACMR -z HEAD | grep -z 'data/.*\.json' | \
     xargs -r -0 -L 1 ./tools/format/json_formatter.[ce]* || exit 1
 
 make astyle-check || exit 1

@@ -1,45 +1,48 @@
 name: astyle
+  
+  on:
+    pull_request:
+      paths:
+        - '.github/workflows/astyle.yml'
+        - 'Makefile'
+        - '.astylerc'
+        - '**.cpp'
+        - '**.h'
+        - '**.c'
+  
+  concurrency:
+    group: astyle-${{ github.ref }}
+    cancel-in-progress: true
 
-on: pull_request
+  permissions:
+    contents: read
 
-jobs:
-  skip-duplicates:
-    continue-on-error: true
-    runs-on: ubuntu-latest
-    # Map a step output to a job output
-    outputs:
-      should_skip: ${{ steps.skip_check.outputs.should_skip }}
-    steps:
-    - id: skip_check
-      uses: fkirc/skip-duplicate-actions@master
-      with:
-        cancel_others: 'true'
-        paths: '[".github/workflows/astyle.yml", "Makefile", ".astylerc", "**.cpp", "**.h", "**.c"]'
-    - run: echo ${{ github.event.number }} > pull_request_id
-    - uses: actions/upload-artifact@v4
-      with:
-        name: pull_request_id
-        path: pull_request_id
-  astyle-code:
-    name: astyle check
-    needs: skip-duplicates
-    if: ${{ needs.skip-duplicates.outputs.should_skip != 'true' }}
+  jobs:
+    astyle-code:
+       #check version and refuse if not astyle 3.1
+      name: astyle check
+  
+      runs-on: cdda-ci
+  
+      steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-    runs-on: ubuntu-latest
+      - name: verify astyle version
+        run: |
+          ver=$( astyle --version 2>&1 || true )
+          printf '%s\n' "$ver" | grep -qE 'Version[[:space:]]+3\.1([^0-9]|$)' || {
+            echo "astyle must be version 3.1 -- see doc/CODE_STYLE.md." >&2
+            echo "found: ${ver:-astyle not installed}" >&2
+            exit 1
+          }
+  
+      - name: astyle check
+        run: make astyle-check
 
-    steps:
-    - uses: actions/checkout@v4
+      - name: Format
+        if: failure()
+        run: make astyle-fast
 
-    - name: install dependencies
-      run: sudo apt-get install astyle
-
-    - name: astyle check
-      run: make astyle-check
-
-    - name: Format
-      if: failure()
-      run: make astyle-fast
-
-    - name: Display Corrections
-      if: failure()
-      run: git diff --color
+      - name: Display Corrections
+        if: failure()
+        run: git diff --color

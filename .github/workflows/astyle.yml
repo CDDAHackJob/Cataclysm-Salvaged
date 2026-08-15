@@ -1,48 +1,49 @@
 name: astyle
 
-  on:
-    pull_request:
-      paths:
-        - '.github/workflows/astyle.yml'
-        - 'Makefile'
-        - '.astylerc'
-        - '**.cpp'
-        - '**.h'
-        - '**.c'
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/astyle.yml'
+      - 'Makefile'
+      - '.astylerc'
+      - '**.cpp'
+      - '**.h'
+      - '**.c'
 
-  concurrency:
-    group: astyle-${{ github.ref }}
-    cancel-in-progress: true
+concurrency:
+  group: astyle-${{ github.ref }}
+  cancel-in-progress: true
 
-  permissions:
-    contents: read
+permissions:
+  contents: read
 
-  jobs:
-    astyle-code:
-       #check version and refuse if not astyle 3.1
-      name: astyle check
+jobs:
+  astyle-code:
+    name: astyle check
 
-      runs-on: cdda-ci
+    runs-on: cdda-ci
 
-      steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+    steps:
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - name: verify astyle version
-        run: |
-          ver=$( astyle --version 2>&1 || true )
-          printf '%s\n' "$ver" | grep -qE 'Version[[:space:]]+3\.1([^0-9]|$)' || {
-            echo "astyle must be version 3.1 -- see doc/CODE_STYLE.md." >&2
-            echo "found: ${ver:-astyle not installed}" >&2
-            exit 1
-          }
+    # check version and refuse if not astyle 3.1 -- `make astyle-check` exits 0
+    # when astyle is missing or too old, reporting success without checking.
+    - name: verify astyle version
+      run: |
+        ver=$( astyle --version 2>&1 || true )
+        printf '%s\n' "$ver" | grep -qE 'Version[[:space:]]+3\.1([^0-9]|$)' || {
+          echo "astyle must be version 3.1 -- see doc/CODE_STYLE.md." >&2
+          echo "found: ${ver:-astyle not installed}" >&2
+          exit 1
+        }
 
-      - name: astyle check
-        run: make astyle-check
+    - name: astyle check
+      run: make astyle-check
 
-      - name: Format
-        if: failure()
-        run: make astyle-fast
+    - name: Format
+      if: failure()
+      run: make astyle-fast
 
-      - name: Display Corrections
-        if: failure()
-        run: git diff --color
+    - name: Display Corrections
+      if: failure()
+      run: git diff --color

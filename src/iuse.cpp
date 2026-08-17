@@ -410,7 +410,6 @@ struct object_names_collection;
 static void item_save_monsters( Character &p, item &it, const std::vector<monster *> &monster_vec,
                                 int photo_quality );
 static bool show_photo_selection( Character &p, item &it, const std::string &var_name );
-void delete_photo_selection( Character &p, item &it, const std::string &var_name );
 
 static std::string format_object_pair( const std::pair<std::string, int> &pair,
                                        const std::string &article );
@@ -5948,7 +5947,7 @@ std::optional<int> iuse::emovedata( Character *p, item *it, const tripoint & )
             popup( _( "You confirm the zeroing of all ones in your device's storage." ) );
             return 1;
         } else {
-            popup( _( "You chose to let your saved data live... for now." ) );
+            popup( _( "You chose to let your saved data live… for now." ) );
             return std::nullopt;
         }
         return 1;
@@ -5990,7 +5989,7 @@ std::optional<int> iuse::emovedata( Character *p, item *it, const tripoint & )
                                   mc->tname() );   //other stuff should be remembered
             return 1;
         } else {
-            popup( _( "You chose to let the %s remain intact... for now." ), mc->tname() );
+            popup( _( "You chose to let the %s remain intact… for now." ), mc->tname() );
             return std::nullopt;
         }
     }

@@ -6910,7 +6910,7 @@ static item::extended_photo_def photo_def_for_camera_point( const tripoint &aim_
     photo_text += "\n\n" + string_format( pgettext( "Date", "The photo was taken on %s." ),
                                           colorize( timestamp, c_light_blue ) );
 
-    //    photo.description = photo_text;
+    photo.description = photo_text;
     //    if( photo.description.compare( photo_text ) ) {}
     return photo;
 }

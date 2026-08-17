@@ -1072,7 +1072,7 @@ void data_dnload_activity_actor::do_turn( player_activity &act, Character &p )
 
     if( dnload.has_flag( flag_EI_PHOTO_F ) ) {
         if( !mc.get_var( "EI_PHOTOS" ).empty() ) {
-            const int found_photos = ( mc.get_var( "EI_PHOTOS", 0 ) );
+            const int found_photos = mc.get_var( "EI_PHOTOS", 0 );
             dnload.set_var( "EI_PHOTOS", dnload.get_var( "EI_PHOTOS", 0 ) + found_photos );
             downloaded_photos += found_photos;
             mc.erase_var( "EI_PHOTOS" );

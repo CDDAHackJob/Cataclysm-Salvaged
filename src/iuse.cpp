@@ -5615,7 +5615,7 @@ std::optional<int> iuse::emovedata( Character *p, item *it, const tripoint & )
         !p->has_effect( effect_contacts ) && !p->has_effect( effect_transition_contacts ) &&
         !p->has_flag( json_flag_ENHANCED_VISION ) ) {
         p->add_msg_if_player( m_info,
-                              _( "All you can see is a blurry screen. Reading glasses would help." ) );
+                              _( "All you can see is a blurry screen.  Reading glasses would help." ) );
         return std::nullopt;
     }
     if( p->cant_do_mounted() ) {
@@ -5630,7 +5630,7 @@ std::optional<int> iuse::emovedata( Character *p, item *it, const tripoint & )
         ei_all, ei_extended_photos, ei_monsters, ei_recipe, ei_ebook, ei_found_media
     };
     uilist emenu;
-    emenu.text = ( "What do you want to do with this device?" );
+    emenu.text = _( "What do you want to do with this device?" );
     if( it->has_flag( flag_EI_UPLOAD ) ) {
         if( !it->get_var( "EI_PHOTOS" ).empty() ||
             !it->get_var( "EI_EXTENDED_PHOTOS" ).empty() ||
@@ -5684,7 +5684,7 @@ std::optional<int> iuse::emovedata( Character *p, item *it, const tripoint & )
         inv_s.add_nearby_items( 1 );
         item_location loc = inv_s.execute();
         if( inv_s.empty() ) {
-            popup( "You don't have any suitable memory cards to upload to." );
+            popup( _( "You don't have any suitable memory cards to upload to." ) );
             return std::nullopt;
         }
         p->mod_moves( -to_moves<int>( 1_seconds ) );
@@ -5697,7 +5697,7 @@ std::optional<int> iuse::emovedata( Character *p, item *it, const tripoint & )
             }
         } //theoretically the flag system doesn't need to filter data leaving the device, just check if data is allowed to leave.
         uilist upmenu; //this will allow any future changes to be balanced out via transfers, unlikely as that is
-        upmenu.text = ( "Upload ALL of the device's data, or just one kind?" );
+        upmenu.text = _( "Upload ALL of the device's data, or just one kind?" );
         upmenu.addentry( ei_all, true, 'a', _( "Upload ALL data!" ) );
         if( !it->get_var( "EI_EXTENDED_PHOTOS" ).empty() ) {
             upmenu.addentry( ei_extended_photos, true, 'c', _( "JUST my Camera photos." ) );
@@ -5894,47 +5894,47 @@ std::optional<int> iuse::emovedata( Character *p, item *it, const tripoint & )
         inv_s.add_nearby_items( 1 );
         item_location loc = inv_s.execute();
         if( inv_s.empty() ) {
-            popup( "You don't have any suitable memory cards to check." );
+            popup( _( "You don't have any suitable memory cards to check." ) );
             return std::nullopt;
         }
         p->mod_moves( -to_moves<int>( 1_seconds ) ); //movement to grab
         item *mc = loc.get_item();
         p->add_msg_if_player( m_neutral, _( "You slot in the %s to check the data." ), mc->tname() );
         //pop up a window with list of stuff it has.
-        std::string msg = ( "This memory card has:\n" );
+        std::string msg = _( "This memory card has:\n" );
         int has_recipes = 0;
         int has_books = 0;
         int has_photos = 0;
         int has_music = 0;
         if( !mc->get_var( "EI_EXTENDED_PHOTOS" ).empty() ) {
             //has_exphotos = true;
-            msg = ( msg + ( "Camera photos\n" ) );
+            msg = ( msg + _( "Camera photos\n" ) );
         }
         if( !mc->get_var( "EI_MONSTER_PHOTOS" ).empty() ) {
             //has_monsters = true;
-            msg = ( msg + ( "Monster photos\n" ) );
+            msg = ( msg + _( "Monster photos\n" ) );
         }
         if( !mc->get_saved_recipes().empty() ) {
             has_recipes = mc->get_saved_recipes().size();
-            msg = msg + std::to_string( has_recipes ) + ( " Recipes\n" );
+            msg = msg + std::to_string( has_recipes ) + _( " Recipes\n" );
         } //once while testing this returned zero books, and crashed with a segmentation error upon exiting inventory. I suspect a null value snuck in but cannot reproduce it
         if( it->has_pocket_type( pocket_type::EBOOK ) && !it->ebooks().empty() ) {
             has_books = mc->ebooks().size();
-            msg = msg + std::to_string( has_books ) + ( " eBooks\n" );
+            msg = msg + std::to_string( has_books ) + _( " eBooks\n" );
         }
         if( !mc->get_var( "EI_PHOTOS" ).empty() ) {
             has_photos = mc->get_var( "EI_PHOTOS", 0 );
-            msg = msg + std::to_string( has_photos ) + ( " Unknown photos\n" );
+            msg = msg + std::to_string( has_photos ) + _( " Unknown photos\n" );
         }
         if( !mc->get_var( "EI_MUSIC" ).empty() ) {
             has_music = mc->get_var( "EI_MUSIC", 0 );
-            msg = msg + std::to_string( has_music ) + ( " Unknown songs\n" );
+            msg = msg + std::to_string( has_music ) + _( " Unknown songs\n" );
         }
         popup( msg );
         return 1;
     }
     if( choice == ei_delete ) {
-        std::string qstr = ( "Purge all data from this %s?" );
+        std::string qstr = _( "Purge all data from this %s?" );
         std::string res = query_popup()
                           .context( "YES_NO" )
                           .message( qstr, it->tname() )
@@ -5945,10 +5945,10 @@ std::optional<int> iuse::emovedata( Character *p, item *it, const tripoint & )
             std::set<recipe_id> norecipes;
             it->set_saved_recipes( norecipes );
             it->clear_ebooks();
-            popup( "You confirm the zeroing of all ones in your device's storage." );
+            popup( _( "You confirm the zeroing of all ones in your device's storage." ) );
             return 1;
         } else {
-            popup( "You chose to let your saved data live... for now." );
+            popup( _( "You chose to let your saved data live... for now." ) );
             return std::nullopt;
         }
         return 1;
@@ -5965,7 +5965,7 @@ std::optional<int> iuse::emovedata( Character *p, item *it, const tripoint & )
         inv_s.add_nearby_items( 1 );
         item_location loc = inv_s.execute();
         if( inv_s.empty() ) {
-            popup( "You don't have any suitable cards to wipe." );
+            popup( _( "You don't have any suitable cards to wipe." ) );
             return std::nullopt;
         }
         p->mod_moves( -to_moves<int>( 1_seconds ) );
@@ -5973,7 +5973,7 @@ std::optional<int> iuse::emovedata( Character *p, item *it, const tripoint & )
         p->add_msg_if_player( m_neutral, _( "You slot the unsuspecting %s in to purge it of data." ),
                               mc->tname() );
 
-        std::string qstr = ( "Purge all data from this memory card?" );
+        std::string qstr = _( "Purge all data from this memory card?" );
         std::string res = query_popup()
                           .context( "YES_NO" )
                           .message( qstr, it->tname() )
@@ -5984,13 +5984,13 @@ std::optional<int> iuse::emovedata( Character *p, item *it, const tripoint & )
             std::set<recipe_id> norecipes;
             mc->set_saved_recipes( norecipes );
             mc->clear_ebooks();
-            popup( ( "You confirm the zeroing of all ones on the helpless %s" ),
+            popup( _( "You confirm the zeroing of all ones on the helpless %s" ),
                    mc->tname() ); //some stuff should stand out
             p->add_msg_if_player( m_info, _( "The %s has been wiped clean." ),
                                   mc->tname() );   //other stuff should be remembered
             return 1;
         } else {
-            popup( ( "You chose to let the %s to remain intact... for now." ), mc->tname() );
+            popup( _( "You chose to let the %s remain intact... for now." ), mc->tname() );
             return std::nullopt;
         }
     }
@@ -6022,7 +6022,7 @@ std::optional<int> iuse::estorage( Character *p, item *it, const tripoint & )
         !p->has_effect( effect_contacts ) && !p->has_effect( effect_transition_contacts ) &&
         !p->has_flag( json_flag_ENHANCED_VISION ) ) {
         p->add_msg_if_player( m_info,
-                              _( "All you can see is a blurry screen. Reading glasses would help." ) );
+                              _( "All you can see is a blurry screen.  Reading glasses would help." ) );
         return std::nullopt;
     }
     if( p->cant_do_mounted() ) {
@@ -6072,7 +6072,7 @@ std::optional<int> iuse::estorage( Character *p, item *it, const tripoint & )
             if( it->has_var( "EIPC_MUSIC_ON" ) ) {
                 emenu.addentry( ei_music, true, 'u', _( "Turn unknown music off" ) );
             } else {
-                emenu.addentry( ei_music, true, 'u', _( "Turn unknown music on? ( Found [%d] songs )" ), eimusic );
+                emenu.addentry( ei_music, true, 'u', _( "Turn unknown music on?  ( Found [%d] songs )" ), eimusic );
             }
         }
     }
@@ -6199,12 +6199,12 @@ std::optional<int> iuse::estorage( Character *p, item *it, const tripoint & )
     }
 
     if( ei_delete == choice ) {
-        delete_photo_selection( *p, *it, "EI_EXTENDED_PHOTOS" );
+        iuse::delete_photo_selection( *p, *it, "EI_EXTENDED_PHOTOS" );
         return 1;
     }
 
     if( ei_recover == choice ) {
-        std::string report = ( "Found Legacy Data:" );
+        std::string report = _( "Found Legacy Data:" );
         if( !it->get_var( "CAMERA_EXTENDED_PHOTOS" ).empty() ||
             !it->get_var( "EIPC_EXTENDED_PHOTOS" ).empty() ) {
             std::vector<item::extended_photo_def> extended_photos;
@@ -6910,8 +6910,8 @@ static item::extended_photo_def photo_def_for_camera_point( const tripoint &aim_
     photo_text += "\n\n" + string_format( pgettext( "Date", "The photo was taken on %s." ),
                                           colorize( timestamp, c_light_blue ) );
 
-    photo.description = photo_text;
-    if( photo.description.compare( photo_text ) ) {}
+    //    photo.description = photo_text;
+    //    if( photo.description.compare( photo_text ) ) {}
     return photo;
 }
 
@@ -7072,7 +7072,7 @@ static bool show_photo_selection( Character &p, item &it, const std::string &var
     return true;
 }
 
-void delete_photo_selection( Character &p, item &it, const std::string &var_name )
+void iuse::delete_photo_selection( Character &p, item &it, const std::string &var_name )
 {
     if( p.is_blind() ) {
         p.add_msg_if_player( _( "You can't see the camera screen, you're blind." ) );
@@ -7148,11 +7148,8 @@ std::string iuse::update_monsters( std::string old_mons, std::string new_mons )
                     old_mons += mtype + "," + string_format( "%d", quality ) + ",";
                 } else {
                     const size_t strqpos = old_strpos + mtype.size() + 2;
-                    const size_t next_comma = old_mons.find( ',', strqpos );
-                    std::string old_s = old_mons.substr( strqpos, next_comma );
-                    old_s.resize( 1 );
                     const int old_quality =
-                        get_quality_from_string( old_s );
+                        get_quality_from_string( old_mons.substr( strqpos, 1 ) );
 
                     if( quality > old_quality ) {
                         const std::string quality_s = string_format( "%d", quality );

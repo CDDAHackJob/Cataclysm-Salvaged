@@ -40,3 +40,6 @@
 #Pin githooks as lf, not crlf.
 #Keeps things unix style (not windows) helps prevent scripts from breaking.
 tools/hooks/* text eol=lf
+
+#Ensures bash scripts run by pre-commit hook run as lf; running as crlf breaks.
+*.bash    text eol=lf

@@ -10,6 +10,13 @@
 #
 # See doc/DEVELOPER_TOOLING.md, doc/CODE_STYLE.md and doc/JSON_STYLE.md.
 
+# This file needs LF line endings, and .gitattributes pins them with
+# `tools/hooks/* text eol=lf`.  That is not cosmetic: a CRLF shell script does
+# not fail loudly.  sh runs it, prints ": not found", and exits 0, which from
+# git's point of view is a hook that passed, so the checks would simply stop
+# happening.  The pin is a property of the repository and reaches every clone,
+# unlike core.autocrlf, which lives in one .git/config and travels nowhere.
+
 # --- environment guards -----------------------------------------------------
 #
 # This is a tracked file, so it reaches every clone and every CI checkout.  It
@@ -216,6 +223,124 @@ else
     # terminal, so a GUI or `git commit 2>&1 | tee` would otherwise show the
     # "commit blocked" summary before the list of files it refers to.
     staged_json | xargs -r -0 -n 1 "$formatter" >&2 || fail=1
+fi
+
+# --- missions missing om_special (warning only, never blocks) ---------------
+#
+# Runs tools/json_tools/assign_mission_target_needs_om_special.bash, the same
+# script CI runs in the workflow of that name.  It reports missions whose
+# .start.assign_mission_target names an om_terrain belonging to an
+# overmap_special but gives no om_special, without which the game does not know
+# how to spawn the special the target sits in.
+#
+# This one WARNS.  It never touches $fail, for two reasons.  The check is
+# whole-tree by construction -- the script scans all of data/ and cannot be
+# narrowed to staged files, because adding an overmap_special retroactively
+# invalidates a mission written years ago -- so it can report an offender the
+# commit in progress neither touched nor can fix.  And it reads the WORKING
+# TREE, including unstaged and untracked files, so unlike the two checks above
+# it is not describing the content being committed.  Blocking on either would
+# reject commits that CI accepts.
+#
+# That is also why the scope rule the rest of this hook follows -- match CI
+# exactly -- does not apply here.  That rule exists to stop one gate disagreeing
+# with another, and a warning is not a gate.  CI remains the only gate for this
+# check, and it does block.
+#
+# Staged data JSON is the TRIGGER, not the scope: nothing else in the tree can
+# change the answer, so a C++-only commit should not pay for the scan.  The scan
+# is ~3.2s over the 5,377 files the script parses.
+#
+# The checker itself is in the trigger too, because a change to the code that
+# DEFINES the verdict must re-run the check -- the same reason json.yml's filter
+# names the formatter's sources and not just the JSON it formats.  The pathspec
+# is derived from $om_script rather than written out a second time, so the two
+# cannot drift apart.  That makes this match the workflow's paths: filter minus
+# the workflow file, which cannot change a local answer.
+#
+# The script is never executed directly -- it is read and handed to bash, for
+# the reasons given at the call site.  A useful side effect is that its 100755
+# mode stops mattering here, so a clone that lost the bit (the hazard this hook
+# itself has on Windows) still runs the check.  A tree predating the script is
+# skipped in silence: there is nothing to check, and that is not worth a
+# message.
+
+om_script=./tools/json_tools/assign_mission_target_needs_om_special.bash
+
+staged_om_inputs() {
+    git diff --cached --name-only --diff-filter=ACMR -z "$against" -- \
+        'data/*.json' "${om_script#./}"
+}
+
+if [ -n "$( staged_om_inputs | tr -d '\0' )" ] && [ -f "$om_script" ]; then
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "pre-commit: jq not found; skipping the om_special check." >&2
+        echo "            Install jq to get it.  It only ever warns, so this does" >&2
+        echo "            not affect the commit either way." >&2
+    elif ! command -v bash >/dev/null 2>&1; then
+        echo "pre-commit: bash not found; skipping the om_special check." >&2
+    else
+        # Read with the CRs stripped and run the result, rather than handing
+        # bash the file, because a CRLF copy of the script is fatal -- bash
+        # stops at `set: pipefail: invalid option name`.  .gitattributes pins
+        # `*.bash text eol=lf`, but a pin acts at CHECKOUT: it cannot convert a
+        # working tree that is already CRLF, which is where anyone who cloned
+        # under core.autocrlf=true before the pin landed still is.  That is the
+        # one state the pin cannot reach.  Stripping costs a 3 kB read.
+        #
+        # The emptiness test is a separate matter and would be worth having
+        # anyway: bash given a zero-byte or shebang-only file exits 0 with no
+        # output, which this hook would report as a clean tree.  `[ -f ]` does
+        # not catch a truncated file.  A check passing by not running, in
+        # miniature.
+        om_status=0
+        om_prog=$( tr -d '\r' < "$om_script" )
+        if [ -z "$om_prog" ]; then
+            echo "pre-commit: could not read $om_script; skipping the om_special check." >&2
+            om_prog=':'
+        fi
+        om_out=$( bash -c "$om_prog" 2>&1 ) || om_status=$?
+
+        # jq's exit status reflects only its LAST input, so an error on one file
+        # is erased by any later file that parses: the script can print
+        # "jq: error", skip that file entirely, and still exit 0.  The output is
+        # the signal here, not the status.  Both of jq's diagnostic formats are
+        # matched -- a runtime error is "jq: error (at FILE:LINE)", a
+        # malformed-JSON failure is a parse error -- and the pattern tolerates
+        # both spellings of the second, which is the one part of this that jq
+        # versions change: 1.6 writes "parse error: ..." with no prefix, 1.8.1
+        # writes "jq: parse error: ...".  That matters more here than in CI,
+        # because the hook runs against whatever jq the developer has while CI
+        # runs the one baked into the image, so the two are not the same
+        # version and are not expected to be.  The verdict does not drift --
+        # only the diagnostic text does.
+        #
+        # Anchored to column 0, where jq writes its diagnostics, while the
+        # script's own offender dump is indented JSON.
+        om_incomplete=0
+        printf '%s\n' "$om_out" | grep -qE '^(jq: )?(parse )?error' && om_incomplete=1
+
+        if [ "$om_status" -ne 0 ] || [ "$om_incomplete" -ne 0 ]; then
+            printf '%s\n' "$om_out" >&2
+        fi
+
+        # An incomplete sweep is reported ahead of the exit status, and instead
+        # of interpreting it, because the two are not independent: a jq error in
+        # the LAST batch also makes the script exit 1, which by status alone is
+        # indistinguishable from a real finding.  The output is printed either
+        # way, so nothing is hidden by declining to label it.
+        if [ "$om_incomplete" -ne 0 ]; then
+            echo "pre-commit: jq reported an error above, so the om_special check did" >&2
+            echo "            not see the whole tree.  Warning only." >&2
+        elif [ "$om_status" -eq 1 ]; then
+            echo "pre-commit: the missions above are missing om_special.  Warning only --" >&2
+            echo "            the check is whole-tree, so they need not be yours.  CI runs" >&2
+            echo "            the same script and does block on it." >&2
+        elif [ "$om_status" -ne 0 ]; then
+            echo "pre-commit: the om_special check exited $om_status, so it did not run." >&2
+            echo "            Warning only." >&2
+        fi
+    fi
 fi
 
 if [ "$fail" -ne 0 ]; then

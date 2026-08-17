@@ -232,6 +232,8 @@ int towel_common( Character *, item *, bool );
 void remove_duplicate_photos( item *it, const std::string &var_name );
 /** takes in two strings of monster photos, checks the second string against the first, returning an updated version of the first string */
 std::string update_monsters( std::string old_mons, std::string new_mons );
+/** Used with camera to delete a selected photo */
+void delete_photo_selection( Character &p, item &it, const std::string &var_name );
 
 // Helper for validating a potential target of robot control
 bool robotcontrol_can_target( Character *, const monster & );

@@ -7001,7 +7001,7 @@ void iuse::remove_duplicate_photos( item *it, const std::string &var_name )
     std::vector<item::extended_photo_def> checked_photos;
     try {
         it->read_extended_photos( extended_photos, var_name, true );
-        for( const auto &current : extended_photos ) {
+        for( const item::extended_photo_def &current : extended_photos ) {
             std::string sample = current.description;
             auto dupe_test = std::find( photo_checker.begin(), photo_checker.end(), sample );
             if( dupe_test == photo_checker.end() ) {
@@ -7122,7 +7122,6 @@ void iuse::delete_photo_selection( Character &p, item &it, const std::string &va
     } else {
         it.write_extended_photos( extended_photos, var_name );
     }
-    return;
 }
 
 std::string iuse::update_monsters( std::string old_mons, std::string new_mons )

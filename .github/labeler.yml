@@ -230,9 +230,6 @@
 "Mods: Dark Days of the Dead":
   - data/mods/classic_zombies/**/*
 
-"Mods: Dark Skies":
-  - data/mods/Dark-Skies-Above/**/*
-
 "Mods: Desert Region":
   - data/mods/desert_region/**/*
 
@@ -279,8 +276,7 @@
   - data/mods/Isolation-Protocol/**/*
 
 "Mods":
-  - any: [ 'data/mods/**' ]
-    all: [ '!data/mods/TEST_DATA/**' ]
+  - data/mods/**
 
 "Mechanics: Enchantments / Spells":
   - "**/**enchantment**"

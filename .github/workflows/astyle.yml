@@ -1,14 +1,23 @@
 name: astyle
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - '.github/workflows/astyle.yml'
       - 'Makefile'
       - '.astylerc'
-      - '**.cpp'
-      - '**.h'
-      - '**.c'
+      # ASTYLE_SOURCES measures 1,172 files and is .cpp and .h ONLY -- 688 and
+      # 484, zero of anything else. '**/*.c' is therefore inert: the tree has no
+      # .c file, and adding one would not put it in ASTYLE_SOURCES either, so
+      # this check would run and come back green without having looked at it.
+      # Kept rather than deleted because an inert trigger costs nothing and the
+      # Makefile is also filtered on, so the commit that adds .c support to
+      # ASTYLE_SOURCES will trigger this job regardless. Do not read it as
+      # evidence that C files are covered; they are not.
+      - '**/*.cpp'
+      - '**/*.h'
+      - '**/*.c'
 
 concurrency:
   group: astyle-${{ github.ref }}
@@ -23,27 +32,41 @@ jobs:
 
     runs-on: cdda-ci
 
+    # The whole job is ~6 seconds. The default is 360 minutes, and this runner
+    # shares the box with Samba and the pool under a 1200% CPU quota, so a
+    # wedged job would hold that for six hours.
+    timeout-minutes: 15
+
     steps:
+    # persist-credentials: false because nothing here pushes. The default leaves
+    # a token in the workspace .git/config for the life of the job.
     - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      with:
+        persist-credentials: false
 
     # check version and refuse if not astyle 3.1 -- `make astyle-check` exits 0
     # when astyle is missing or too old, reporting success without checking.
     - name: verify astyle version
       run: |
         ver=$( astyle --version 2>&1 || true )
-        printf '%s\n' "$ver" | grep -qE 'Version[[:space:]]+3\.1([^0-9]|$)' || {
+        printf '%s\n' "$ver" | grep -qE 'Version[[:space:]]+3\.1([[:space:]]|$)' || {
           echo "astyle must be version 3.1 -- see doc/CODE_STYLE.md." >&2
           echo "found: ${ver:-astyle not installed}" >&2
           exit 1
         }
 
     - name: astyle check
+      id: astyle_check
       run: make astyle-check
 
+    # Gated on the check itself, not on failure() alone. A bare failure() also
+    # fires when the version step above fails, which would reformat the whole
+    # tree with the wrong astyle and bury the one-line version error under a
+    # 1,172-file diff.
     - name: Format
-      if: failure()
+      if: failure() && steps.astyle_check.outcome == 'failure'
       run: make astyle-fast
 
     - name: Display Corrections
-      if: failure()
+      if: failure() && steps.astyle_check.outcome == 'failure'
       run: git diff --color

@@ -1,16 +1,109 @@
 name: Detect missions that are missing .start.assign_mission_target.om_special
 
+# Upstream's filter was '**.json', which on Forgejo is not merely loose but
+# exactly inverted. Forgejo matches with doublestar, where '**' is recursive
+# only as a whole path component and otherwise degrades to a single '*', so
+# '**.json' means root-level *.json -- CMakePresets.json and
+# org.cataclysmdda.CataclysmDDA.json. The script reads neither. It scans
+# ./data/ and nothing else, so it would have fired only on the two files it
+# cannot see, and never on the 5,377 it parses.
+#
+# 'data/**/*.json' covers every one of those 5,377, and cannot under-match.
+# Measured against bmatcuk/doublestar/v4 directly, since forgejo-runner exec does
+# not evaluate paths: filters and so cannot test one -- '**' DOES match zero path
+# segments, so this also catches a .json sitting directly in data/. Only one file
+# is at that depth, data/fontdata.json, and it is one of the two the script skips;
+# every file the script actually parses is at data/<dir>/.../x.json.
+#
+# The other skipped file, data/mods/replacements.json, is matched by the trigger
+# and left that way deliberately. A change touching only the skipped files starts
+# one 3-second job that correctly finds nothing -- cheaper than a negation that
+# the trigger and the script would both have to be kept in step with.
 on:
+  workflow_dispatch:
   pull_request:
     paths:
-      - '**.json'
+      - '.github/workflows/assign_mission_target_needs_om_special.yml'
+      - 'tools/json_tools/assign_mission_target_needs_om_special.bash'
+      - 'data/**/*.json'
+
+concurrency:
+  group: assign-mission-target-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
   run-the-tool:
-    runs-on: ubuntu-latest
+    runs-on: cdda-ci
+
+    # The check itself is 3.2s (measured on cdda-ci:6). This bound is for
+    # checkout of a repository this size, and to cap a hang; it is not a
+    # statement about the script's cost.
+    timeout-minutes: 15
+
     steps:
-    - uses: actions/checkout@v4
-    - run: ./tools/json_tools/assign_mission_target_needs_om_special.bash 2>&1
+    # persist-credentials: false because nothing here pushes. The default leaves
+    # a token in the workspace .git/config for the life of the job.
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      with:
+        persist-credentials: false
+
+    # No tool-VERSION guard here, unlike astyle.yml, flake8.yml and
+    # cmake-format.yml: jq is a JSON engine, not a linter, so the finding comes
+    # entirely from the repository's data and no jq release re-decides it. A
+    # MISSING jq is also already loud -- rc 127, since then every invocation
+    # fails including the last, which is what the script's exit status is built
+    # from.
+    #
+    # A per-file jq error is a different matter, and it is why this step is not
+    # just the bare script. Measured on cdda-ci:6: jq's exit status reflects only
+    # its LAST input, so an error on one file is ERASED by any later file that
+    # parses -- `jq -f prog bad.json good.json` exits 0 having printed
+    # "jq: error" and skipped bad.json entirely. find propagates faithfully
+    # (checked in both the first and last batch: rc 1 either way), so the whole
+    # pipeline returns 0, `set -euo pipefail` never fires, and the job is GREEN
+    # with the error sitting unread in the log.
+    #
+    # That is reachable from legal content, not just corruption: om_terrain is
+    # documented as "String or variable object" (doc/MISSIONS_JSON.md, and
+    # get_str_or_var in src/mission_util.cpp), and indexing the terrain map with
+    # an object raises "Cannot index object with object". Nothing in the tree
+    # does it today -- all 168 are strings -- so the first PR to use the variable
+    # form would silently switch this check off for that file.
+    #
+    # Hence: capture, print, and fail on any jq diagnostic. Anchored to start of
+    # line because jq writes its diagnostics at column 0 while the script's own
+    # offender dump is indented JSON.
+    #
+    # Both prefixes are matched because jq uses two. A runtime error is
+    # "jq: error (at FILE:LINE)" and is the swallowable one. A malformed-JSON
+    # failure is a parse error, and that one ABORTS jq rather than continuing,
+    # so it fails on its own status too; it is matched anyway, because a guard
+    # that catches one of two diagnostic formats invites the belief that it
+    # catches both.
+    #
+    # The pattern tolerates BOTH SPELLINGS OF THE PARSE ERROR, which is the one
+    # part of this that jq versions do change. Measured side by side: 1.6 (the
+    # image) writes "parse error: ..." with no prefix and exits 4; 1.8.1 writes
+    # "jq: parse error: ..." and exits 5. An anchored "^parse error:" therefore
+    # silently stops matching the day the base image moves past bookworm. The
+    # verdict itself does NOT drift -- the same seeded defect gives rc 1 and a
+    # byte-identical 545-byte report on both -- because jq is an engine and the
+    # finding comes from the data, which is why there is no version guard here
+    # while astyle, flake8 and cmake-format all have one. Only the diagnostic
+    # text drifts, so only the diagnostic match is written defensively.
+    - name: run the tool
+      run: |
+        log=$( mktemp )
+        status=0
+        ./tools/json_tools/assign_mission_target_needs_om_special.bash > "$log" 2>&1 || status=$?
+        cat "$log"
+        if grep -qE '^(jq: )?(parse )?error' "$log"; then
+          echo "jq reported an error on at least one file, so the check did not see the" >&2
+          echo "whole tree. This does NOT fail on its own -- jq's exit status only" >&2
+          echo "reflects its last input -- so it is failed here deliberately." >&2
+          exit 1
+        fi
+        exit "$status"

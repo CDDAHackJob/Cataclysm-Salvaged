@@ -29,6 +29,24 @@
 #include "string_formatter.h"
 #include "type_id.h"
 
+// Marks a lambda that never returns, for -Wmissing-noreturn (which this project
+// enables deliberately).  Clang 21 diagnoses the two throw-only lambdas below;
+// GCC 12 does not, so this is a detection improvement rather than new bad code.
+//
+// C++17 HAS NO PORTABLE SPELLING FOR THIS.  In `[]( auto ) [[noreturn]] { }` the
+// attribute sits in the lambda-declarator, where it appertains to the *type*, so
+// clang rejects it outright: "'noreturn' attribute cannot be applied to types".
+// `[[gnu::noreturn]]` is silently ignored there.  Only the GNU spelling works,
+// and it is accepted by both compilers (measured).  C++23 moved attributes to
+// the lambda-introducer, which is the real fix.
+//
+// The name matches upstream's so a future merge of this file aligns instead of
+// conflicting; the guard lets upstream's definition win if one ever arrives.
+// TODO: replace with [[noreturn]] if this project ever moves to C++23.
+#ifndef LAMBDA_NORETURN_CLANG21x1
+#define LAMBDA_NORETURN_CLANG21x1 __attribute__( ( noreturn ) )
+#endif
+
 namespace
 {
 template<typename T, class C>
@@ -627,7 +645,7 @@ void math_exp::math_exp_impl::new_func()
             {
                 output.emplace( std::in_place_type_t<func_jmath>(), std::move( params ), v );
             },
-            []( auto /* v */ )
+            []( auto /* v */ ) LAMBDA_NORETURN_CLANG21x1
             {
                 throw std::invalid_argument( "Internal func error.  That's all we know." );
             },
@@ -760,7 +778,7 @@ void math_exp::math_exp_impl::new_oper()
             _validate_operand( rhs, v->symbol );
             output.emplace( std::in_place_type_t<oper>(), thingie { 0.0 }, rhs, v->f );
         },
-        []( auto /* v */ )
+        []( auto /* v */ ) LAMBDA_NORETURN_CLANG21x1
         {
             // we should never get here due to paren validation
             throw std::invalid_argument( "Internal oper error.  That's all we know." );

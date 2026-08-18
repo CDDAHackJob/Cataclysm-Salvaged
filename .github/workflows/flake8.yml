@@ -1,29 +1,69 @@
 name: Flake8 Python linting
 
 on:
-  push:
-    branches:
-    - master
-    paths:
-    - '**.py'
+  workflow_dispatch:
   pull_request:
-    branches:
-    - master
     paths:
-    - '**.py'
+      - '.github/workflows/flake8.yml'
+      - '.flake8'
+      - 'Makefile'
+      - 'build-scripts/problem-matchers/flake8.json'
+      # '**.py' was the upstream filter and does NOT work here: Forgejo matches
+      # with doublestar, where '**' is only recursive as a whole path component
+      # and otherwise degrades to a single '*'. It would have matched only .py
+      # files at the repository root, of which there are none.
+      - '**/*.py'
+
+concurrency:
+  group: flake8-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    name: Flake8 Python linting
+
+    runs-on: cdda-ci
+
+    timeout-minutes: 15
 
     steps:
-    - uses: actions/checkout@v4
-    - name: install dependencies
-      run: sudo apt-get install flake8
+    # persist-credentials: false because nothing here pushes. The default leaves
+    # a token in the workspace .git/config for the life of the job.
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      with:
+        persist-credentials: false
+
+    # flake8's verdict is version-dependent and nothing in the tree pins it --
+    # there is no Python equivalent of doc/CODE_STYLE.md. Measured 2026-08-14:
+    # this tree is CLEAN under flake8 3.9.2 and 4.0.1 and reports 8 violations
+    # under 5.0.4, because pycodestyle 2.9 widened E275 and 2.10 changed how
+    # E501 counts physical lines inside docstrings. The tree was fixed against
+    # 5.0.4, so that is the version this check is defined against.
+    #
+    # pycodestyle is checked too, and is the load-bearing half: the checks live
+    # there rather than in flake8, and Debian pairs flake8 5.0.4 with
+    # pycodestyle 2.10.0 rather than upstream's own pin.
+    - name: verify flake8 version
+      run: |
+        ver=$( flake8 --version 2>&1 | tr '\n' ' ' || true )
+        case "$ver" in
+          5.0.4\ *) ;;
+          *) echo "flake8 must be 5.0.4, found: ${ver:-flake8 not installed}" >&2; exit 1 ;;
+        esac
+        case "$ver" in
+          *"pycodestyle: 2.10.0"*) ;;
+          *) echo "pycodestyle must be 2.10.0, found: $ver" >&2; exit 1 ;;
+        esac
+
+    # Registers a regex that turns "file:line:col: CODE message" into inline
+    # annotations. Presentational only -- it cannot change pass or fail. Whether
+    # Forgejo honours ::add-matcher:: is unverified; if it does not, the line is
+    # inert rather than harmful.
     - name: Enable flake8 problem matcher
       run: echo "::add-matcher::build-scripts/problem-matchers/flake8.json"
+
     - name: run Flake8
       run: make python-check

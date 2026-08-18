@@ -1,15 +1,105 @@
 name: Summary Labeler
 
+# Labels a pull request by WHAT KIND of change it is, read from the PR body --
+# where labeler.yml labels by WHAT AREA the changed files touch. The input is the
+# one line the PR template asks for:
+#
+#     #### Summary
+#     Category "Brief description"
+#
+# so `Bugfixes "..."` becomes <Bugfix>, `Content "..."` becomes <Content>, and so
+# on, per .github/summary-labels.yml.
+#
+# THIS IS THE ONE COUPLED TO THE CHANGELOG, and the coupling is indirect and easy
+# to break. tools/generate_changelog.py parses that SAME line, independently, and
+# validates it against its own VALID_SUMMARY_CATEGORIES. Neither reads the other.
+# So .github/pull_request_template.md is load-bearing for both: change the
+# heading or the quoting and this workflow silently stops labelling while the
+# changelog silently stops recording. If the category list is ever edited, edit
+# it in all three places (CDDA_CI_PLAN.md 2.6).
+#
+# Unlike labeler.yml, this one is worth having per-PR AND per-release: on a
+# release aggregating months of work it records the mix of change kinds that went
+# in, which is closer to a changelog summary than the area labels are.
+
 on:
+  # No paths: filter -- the trigger is the PR body, not the files. No
+  # workflow_dispatch: there is no body to read without a pull request.
+  #
+  # pull_request_target IS THE SAFE CHOICE HERE, AND IT IS LOAD-BEARING FOR MORE
+  # THAN THE TOKEN. getConfig() reads .github/summary-labels.yml through the API
+  # at `github.context.sha`, and under this trigger that SHA is the BASE branch,
+  # not the pull request head. So a pull request cannot ship its own label rules
+  # and have them honoured. Switching to `pull_request` would read the config
+  # from the PR instead, letting an author define what labels their own PR gets.
+  # As with labeler.yml, no PR code is checked out or executed either.
   - pull_request_target
 
+concurrency:
+  group: summary-labeler-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
-  uses:
+  label:
     name: labeler
-    runs-on: ubuntu-latest
+
+    # ADDED -- upstream had no permissions block at all, at either level. That is
+    # not merely untidy here: with the repository default set to read-only
+    # (CDDA_CI_PLAN.md 6.2) an absent block means no write scope, and the action
+    # fails to apply labels for a reason that looks nothing like a permissions
+    # problem. contents: read is for fetching the config; pull-requests: write is
+    # for applying the labels.
+    # No `statuses: write`, deliberately: multi-labeler can post commit statuses,
+    # but only from a `checks:` section in its config, and .github/summary-labels.yml
+    # has none -- addChecks() returns early on an empty list. If a checks: block
+    # is ever added, this block needs statuses: write or the labels will apply
+    # while the status silently fails.
+    permissions:
+      contents: read        # repos.getContent, to fetch the config
+      pull-requests: write  # issues.addLabels, to apply them
+
+    runs-on: cdda-ci
+
+    # Two API calls plus regex over one PR body -- getContent for the config,
+    # addLabels for the result. Unlike labeler.yml this does NOT page a
+    # changed-file list, so its cost does not grow with the size of the release.
+    # The bound caps a hang.
+    timeout-minutes: 10
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: fuxingloh/multi-labeler@main
+      # NO CHECKOUT STEP, where upstream ran actions/checkout first. It was never
+      # needed: multi-labeler fetches its config through the API
+      # (`client.rest.repos.getContent`) and touches no file in the workspace --
+      # verified by reading v4.0.0's source, which contains no filesystem access
+      # at all. Dropping it removes a step, a pinned ref, and a full clone of a
+      # 12 GB repository for a job that reads one YAML file.
+      #
+      # PINNED TO v4.0.0, AND THE VERSION CHOICE IS FORCED BY THE RUNNER IMAGE.
+      # v5.0.0 declares `runs: using: node24`; cdda-ci ships node 20.20.2, so v5
+      # cannot execute here. v3.0.0 and v4.0.0 both declare node20. v4.0.0 is the
+      # newest that runs, and its config schema is the one this repository has --
+      # `version: t.literal('v1')` with a `body` matcher, checked at the tag.
+      #
+      # Pinned by SHA rather than @v4, and emphatically not @main as upstream had
+      # it: `v5` and `v5.0.0` already point at different commits in this
+      # repository, so its major tags demonstrably move.
+      #
+      # Absolute URL because unqualified `uses:` resolves against
+      # code.forgejo.org, which does not carry this action (CDDA_CI_PLAN.md
+      # 11.5e).
+      - uses: https://github.com/fuxingloh/multi-labeler@b15a54460c38f54043fa75f7b08a0e2aa5b94b5b # v4.0.0
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # REQUIRED, NOT OPTIONAL: config-path defaults to '.github/labeler.yml'
+          # -- the OTHER config, the path-based one. Omit this and the action
+          # would read labeler.yml's 64 file-glob rules as body matchers and
+          # fail to parse them.
           config-path: '.github/summary-labels.yml'
+          # github-token deliberately not passed. It already defaults to
+          # `${{ github.token }}`, and a default applies only to an ABSENT input
+          # -- an empty string supplied for it would win and leave the action
+          # with no credential. Same reasoning as labeler.yml; whether this forge
+          # populates secrets.GITHUB_TOKEN is unmeasured and cannot be tested
+          # locally, since `forgejo-runner exec` mints no token.

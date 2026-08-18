@@ -1,36 +1,60 @@
 name: JSON Validation
 
-on: pull_request
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/json.yml'
+      - 'Makefile'
+      # The checked corpus is exactly `find data -name "*.json"`, so the filter
+      # can name it exactly. The other 45 JSON files in the tree -- .vscode,
+      # gfx, build-scripts, tools -- are not checked and must not trigger.
+      - 'data/**/*.json'
+      # json_formatter's own sources. A change here changes what "correctly
+      # formatted" means, so the corpus has to be re-checked even though no
+      # data file moved. The Makefile builds it from
+      # `$(wildcard tools/format/*.cpp) src/wcwidth.cpp src/json.cpp`.
+      - 'tools/format/*.cpp'
+      - 'tools/format/*.h'
+      - 'src/json.cpp'
+      - 'src/json.h'
+      - 'src/wcwidth.cpp'
+      - 'src/wcwidth.h'
+
+concurrency:
+  group: json-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  skip-duplicates:
-    continue-on-error: true
-    runs-on: ubuntu-latest
-    # Map a step output to a job output
-    outputs:
-      should_skip: ${{ steps.skip_check.outputs.should_skip }}
-    steps:
-    - id: skip_check
-      uses: fkirc/skip-duplicate-actions@master
-      with:
-        cancel_others: 'true'
-        paths: '["**.json", ".github/workflows/json.yml"]'
-    - run: echo ${{ github.event.number }} > pull_request_id
-    - uses: actions/upload-artifact@v4
-      with:
-        name: pull_request_id
-        path: pull_request_id
   style-json:
     name: JSON style check
 
-    runs-on: ubuntu-latest
-    needs: skip-duplicates
-    if: ${{ needs.skip-duplicates.outputs.should_skip != 'true' }}
+    runs-on: cdda-ci
+
+    # The whole job is ~7 seconds: the g++ build of json_formatter plus all
+    # 5,379 files. The default is 360 minutes, and this runner shares the box
+    # with Samba and the pool under a 1200% CPU quota.
+    timeout-minutes: 15
 
     steps:
-    - uses: actions/checkout@v4
+    # persist-credentials: false because nothing here pushes. The default leaves
+    # a token in the workspace .git/config for the life of the job.
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      with:
+        persist-credentials: false
+
+    # No tool-presence guard here, unlike astyle.yml. json_formatter is a make
+    # prerequisite, so a missing binary is built and a failed build fails the
+    # job -- there is no path where this reports success without checking.
+    # RELEASE=1 is inert for this target (it adds no flag to the formatter's
+    # compile line) but is kept to match what runs on GitHub.
     - name: JSON style check
+      id: style_json
       run: make style-all-json-parallel RELEASE=1
+
     - name: Display Corrections
-      if: failure()
+      if: failure() && steps.style_json.outcome == 'failure'
       run: git diff --color

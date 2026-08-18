@@ -1,0 +1,178 @@
+name: Modern Clang syntax check
+
+# CHEAP INSURANCE AGAINST TOOLCHAIN DRIFT, not a code-quality check.
+#
+# Measured 2026-08-17: 645 of 647 translation units already compile clean under
+# Clang 21. That is a SNAPSHOT, and without a guard it silently expires -- every
+# commit written and checked only against GCC 12 can add Clang-21 breakage that
+# nothing detects until someone attempts the bump, by which point it is
+# archaeology across many commits instead of two lines.
+#
+# WHAT THIS IS NOT: it does not run clang-tidy, does not build the CataAnalyzer
+# plugin, does not need llvm-21-dev, and does not produce a binary. It answers
+# exactly one question -- "does this tree still compile under a modern Clang?" --
+# and nothing else. That is why it can use Clang 21 while clang-tidy.yml and
+# iwyu.yml remain pinned to LLVM 17 (the plugin does not build past 17; see
+# CDDA_TOOLCHAIN_PLAN.md 1.1). The two do not conflict because this one loads no
+# plugin.
+#
+# `-fsyntax-only` is what makes it affordable: no codegen, no optimisation, no
+# link. Measured 324 s for 606 TUs at 4 parallel jobs, against ~90 min for a
+# whole-tree clang-tidy run.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - '**/*.c'
+      - '**/*.cpp'
+      - '**/*.h'
+      - '**/*.hpp'
+      - '**/CMakeLists.txt'
+      - 'CMakeModules/**'
+      - '**/Makefile'
+      - '.github/workflows/syntax-check.yml'
+
+  # Pull requests here happen only at release (experimental -> master), so without
+  # dispatch the first time modern Clang sees a change is months after it was
+  # written -- the same reasoning that put workflow_dispatch on clang-tidy.yml.
+  workflow_dispatch:
+
+concurrency:
+  group: syntax-check-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+    runs-on: cdda-ci
+
+    env:
+      CLANG_VERSION: '21'
+
+    # Measured 324 s. 30 minutes is ~5x headroom; this job has no reason to
+    # approach it, so hitting the limit means something is genuinely wrong rather
+    # than that the tree grew.
+    timeout-minutes: 30
+
+    steps:
+    # Only the compiler, NOT llvm-N-dev -- syntax checking needs no LLVM
+    # development headers, and skipping them keeps this at ~3 s (measured).
+    - name: install Clang ${{ env.CLANG_VERSION }}
+      run: |
+        set -eu
+        wget -qO "$RUNNER_TEMP/llvm.key" https://apt.llvm.org/llvm-snapshot.gpg.key
+        gpg --dearmor < "$RUNNER_TEMP/llvm.key" > /usr/share/keyrings/llvm.gpg
+        echo "deb [signed-by=/usr/share/keyrings/llvm.gpg] \
+        http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-${CLANG_VERSION} main" \
+          > /etc/apt/sources.list.d/llvm.list
+        apt-get update
+        apt-get install -y --no-install-recommends "clang-${CLANG_VERSION}"
+        "clang++-${CLANG_VERSION}" --version
+
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      with:
+        persist-credentials: false
+
+    # Configure only -- nothing is built. This exists solely to emit
+    # compile_commands.json, which carries the real defines and include paths;
+    # reconstructing those by hand would test a configuration the project does
+    # not use. CATA_CLANG_TIDY_PLUGIN is deliberately OFF so no LLVM dev headers
+    # are needed. Measured under 2 s.
+    - name: generate compile database
+      env:
+        CXX: clang++-21
+      run: |
+        set -eu
+        mkdir -p build
+        cd build
+        cmake \
+          -DBACKTRACE=ON \
+          -DCMAKE_CXX_COMPILER="clang++-${CLANG_VERSION}" \
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+          -DCMAKE_BUILD_TYPE=MinSizeRel \
+          -DTILES=1 -DSOUND=1 \
+          -DCATA_CLANG_TIDY_PLUGIN=OFF \
+          ..
+
+    # The check. Each entry in the compile database is replayed with codegen
+    # stripped.
+    #
+    # THREE TRANSFORMS, EACH LOAD-BEARING:
+    #   * `-o <path>` removed -- there is no output file
+    #   * `-c` removed -- MANDATORY, not tidiness. Under -fsyntax-only clang
+    #     reports `-c` as an unused argument, and this project builds with
+    #     -Werror, so every TU fails instantly on a command-line warning without
+    #     compiling anything. That failure looks exactly like a broken tree; it
+    #     was measured (647/647 "failed" in 1 second).
+    #   * `-Wno-error=deprecated-declarations` added -- see below.
+    #
+    # -P4 matches the thermal ceiling established for this host: 4 parallel
+    # compilers peak at 87 C with zero throttle events, 6 sustains ~90 C with 96
+    # (CDDA_CI_PLAN.md 11.5h).
+    #
+    # tools/clang-tidy-plugin is excluded: it includes clang's own headers, which
+    # need llvm-dev, and clang-tidy.yml already builds it.
+    - name: syntax-check every translation unit
+      run: |
+        set -eu
+        python3 - <<'PY' > "$RUNNER_TEMP/cmds.tsv"
+        import json, shlex
+        db = json.load(open('build/compile_commands.json'))
+        for e in db:
+            if 'third-party' in e['file'] or 'clang-tidy-plugin' in e['file']:
+                continue
+            out, skip = [], False
+            for a in shlex.split(e['command']):
+                if skip:
+                    skip = False; continue
+                if a == '-o':
+                    skip = True; continue
+                if a == '-c':
+                    continue
+                out.append(a)
+            out[1:1] = ['-fsyntax-only', '-Wno-error=deprecated-declarations']
+            print('\t'.join([e['directory'], e['file'], shlex.join(out)]))
+        PY
+        total=$(wc -l < "$RUNNER_TEMP/cmds.tsv")
+        echo "Syntax-checking $total translation units with clang++-${CLANG_VERSION}."
+        : > "$RUNNER_TEMP/failed.txt"
+        xargs -a "$RUNNER_TEMP/cmds.tsv" -P4 -d'\n' -I LINE bash -c '
+          IFS="	" read -r dir file cmd <<< "LINE"
+          if ! ( cd "$dir" && eval "$cmd" ); then
+            printf "%s\n" "$file" >> "'"$RUNNER_TEMP"'/failed.txt"
+          fi'
+        n=$(grep -c . "$RUNNER_TEMP/failed.txt" || true)
+        # A count of 0 must mean "all checked and clean", never "nothing ran".
+        if [ "$total" -eq 0 ]; then
+          echo "::error::compile database produced no translation units - the check did not run."
+          exit 1
+        fi
+        if [ "$n" -gt 0 ]; then
+          echo "::error::$n of $total translation units fail under clang++-${CLANG_VERSION}:"
+          sed 's/^/  /' "$RUNNER_TEMP/failed.txt"
+          exit 1
+        fi
+        echo "All $total translation units compile under clang++-${CLANG_VERSION}."
+
+    # WHY deprecated-declarations IS DOWNGRADED RATHER THAN FIXED OR SILENCED.
+    #
+    # libstdc++ 12 implements std::stable_sort using its own deprecated
+    # std::get_temporary_buffer. Clang attributes the diagnostic to the
+    # INSTANTIATION POINT -- your stable_sort call -- so it reads as a defect in
+    # this project. It is not: all 14 std::stable_sort call sites in the tree
+    # trigger it, and the only "fix" would be to stop sorting stably. GCC never
+    # shows it because it suppresses diagnostics arising in its own headers.
+    #
+    # Isolated by controlled experiment (CDDA_TOOLCHAIN_PLAN.md 1.2):
+    #   Clang 21 x libstdc++ 12  -> fires, 14 diagnostics
+    #   Clang 21 x libstdc++ 14  -> clean
+    # Same compiler; the standard library is the variable. So this disappears by
+    # itself if the build host ever moves to Debian 13.
+    #
+    # -Wno-error= rather than -Wno-: the diagnostics stay VISIBLE in the log (9
+    # TUs still print them) so a genuine deprecation in project code is not
+    # hidden by the suppression of an unrelated library artifact.

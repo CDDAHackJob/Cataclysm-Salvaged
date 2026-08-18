@@ -9,7 +9,16 @@ function Q {
 		-exec jq "${@}" {} +
 }
 
-SPECIAL_OF_TERRAIN="$(mktemp --suffix -special-of-terrain.json )"
+# One temp DIRECTORY, removed on exit. Two loose mktemp files were left behind
+# on every run, which cost nothing in CI where the container is discarded, but
+# accumulate on a developer machine now that tools/hooks/pre-commit runs this on
+# every commit that stages data JSON -- measured at ~260 kB a run. The trap
+# preserves the exit status below. It also drops mktemp --suffix, which is a GNU
+# extension that BSD and macOS do not have.
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+SPECIAL_OF_TERRAIN="$TMP_DIR/special-of-terrain.json"
 Q 'def skip(to_skip): select(all(. != to_skip; .));
     if type=="array" then .[] else . end
 	| select(type=="object")
@@ -26,16 +35,26 @@ Q 'def skip(to_skip): select(all(. != to_skip; .));
 	| map_values(unique)' \
 > "$SPECIAL_OF_TERRAIN"
 
-MISSING_OM_SPECIAL="$(mktemp --suffix -missing-om-special.json )"
+MISSING_OM_SPECIAL="$TMP_DIR/missing-om-special.json"
 Q --slurpfile special_of_terrain "$SPECIAL_OF_TERRAIN" \
    	'if type=="array" then .[] else . end
 	| select(type=="object")
    	| select(.type=="mission_definition")
    	| .id as $id
    	| .start?.assign_mission_target?
-   	| select(.om_terrain)
+	# om_terrain may also be a variable object resolved from game state at
+	# runtime. There is no terrain name to look up, so skip it -- indexing the
+	# map with an object raises a jq error, and the jq exit status reflects only
+	# its last input, so that error is erased by the next file that parses.
+   	| select(.om_terrain | type == "string")
    	| .XXX_NEEDS_SPECIAL=$special_of_terrain[][.om_terrain]
    	| select(.XXX_NEEDS_SPECIAL)
+	# om_special has the same string-or-variable-object form as om_terrain, and
+	# an object never equals a string, so a mission using the variable form would
+	# fall through the comparison below and be reported as missing an om_special
+	# it plainly has. An absent om_special is null, not an object, so the case
+	# this whole check exists to catch is still reported.
+	| select(.om_special | type != "object")
 	| select(all(.om_special != .XXX_NEEDS_SPECIAL[]; .))
    	| {id: $id, om_special, XXX_NEEDS_SPECIAL}' \
 | jq --slurp unique > "$MISSING_OM_SPECIAL"

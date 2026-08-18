@@ -5,7 +5,26 @@
 echo "Using bash version $BASH_VERSION"
 set -exo pipefail
 
-num_jobs=3
+# Overridable, raised from upstream's 3 to 4. This check runs on one self-hosted
+# machine, so the default is set for that machine rather than left at a value
+# sized for GitHub's 2-4 core hosted runners; CLANG_TIDY_JOBS overrides it for
+# anywhere else.
+#
+# Measured on this tree (647 translation units): 537 TUs in 75 min at -P4, so
+# roughly 34 s of CPU per TU, giving ~90 min whole-tree at -P4 and ~120 min at
+# -P3. That matters because the whole-tree path is reachable from an ordinary
+# pull request -- this script escalates to analysing everything when the change
+# touches clang-tidy, build-scripts or cmake -- and the CI host has one runner.
+#
+# DO NOT RAISE IT FURTHER WITHOUT MEASURING HEAT, not wall time. 4 is not a
+# throughput compromise, it is a thermal ceiling found by testing: on the
+# i7-12700K CI host, 6 jobs ran ~90 C with 96 throttle events, and 12 and 16 both
+# reached 100 C (TjMax) with the CPU fan already pegged at 255/255. 4 peaked at
+# 87 C with zero throttle events. This job is the worst thermal offender in the
+# set because it is continuous clang frontends with no link or I/O phase to let
+# the die cool. Full table in .github/workflows/clang-tidy.yml at the
+# `run clang-tidy` step.
+num_jobs=${CLANG_TIDY_JOBS:-4}
 
 # We might need binaries installed via pip, so ensure that our personal bin dir is on the PATH
 export PATH=$HOME/.local/bin:$PATH
@@ -123,12 +142,45 @@ case "$CATA_CLANG_TIDY_SUBSET" in
         ;;
 esac
 
+# The exit status is INTERPRETED rather than merely propagated, because xargs
+# uses distinct codes for "the tool reported problems" and "the tool broke, and I
+# gave up dispatching" -- and those two mean opposite things about coverage.
+# Measured directly, 20 files at -P4 with one misbehaving:
+#
+#     file exits 1 (a finding)   rc=123   all 20 analysed
+#     file killed by a signal    rc=125   only 17 analysed, rest ABANDONED
+#     file exits 255             rc=124   dispatch stopped
+#
+# Without this, all three surface identically as "the job failed", and the honest
+# reading of a red run -- "clang-tidy found things" -- is wrong in exactly the
+# cases where files went unchecked. A crashing clang-tidy is not rare on a large
+# codebase, and it silently drops every file still queued behind it.
 function analyze_files_in_random_order
 {
     if [ -n "$1" ]
     then
+        local rc=0
         echo "$1" | shuf | \
-            xargs -P "$num_jobs" -n 1 ./build-scripts/clang-tidy-wrapper.sh -quiet
+            xargs -P "$num_jobs" -n 1 ./build-scripts/clang-tidy-wrapper.sh -quiet || rc=$?
+        case "$rc" in
+            0 )
+                ;;
+            123 )
+                echo "clang-tidy reported findings. All files were analysed." >&2
+                ;;
+            124 | 125 )
+                echo "ERROR: analysis ABORTED EARLY (xargs rc=$rc)." >&2
+                echo "  125 = a clang-tidy process was killed by a signal (crash)." >&2
+                echo "  124 = one exited 255." >&2
+                echo "  Either way xargs stopped dispatching, so an unknown number of" >&2
+                echo "  files were NEVER ANALYSED. This is NOT a clean 'found problems'" >&2
+                echo "  result -- treat coverage as incomplete and re-run." >&2
+                ;;
+            * )
+                echo "ERROR: xargs exited $rc, which is not a status it documents." >&2
+                ;;
+        esac
+        return $rc
     else
         echo "No files to analyze"
     fi

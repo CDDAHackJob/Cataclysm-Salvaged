@@ -1,31 +1,91 @@
 name: cmake-format linting
 
+# The paths filter is the lint list, spelled out. No globs at all, deliberately:
+# upstream's '**.cmake' and '**.cmake.in' do not mean here what they mean on
+# GitHub -- Forgejo matches with doublestar, where '**' is recursive only as a
+# whole path component and otherwise degrades to a single '*'. '**.cmake' there-
+# fore matched nothing (no .cmake file sits at the repository root), and
+# '**.cmake.in' matched exactly one file by luck. Neither mattered, because no
+# .cmake file is linted at all -- fixing them to '**/*.cmake' would only start
+# jobs that come back green having inspected none of the 17 files that changed.
+#
+# Naming the linted files instead makes the filter exact, and the list it has to
+# agree with is fifteen lines below in this same file, so the two cannot
+# silently diverge.
 on:
-  push:
-    branches:
-    - master
-    paths:
-    - '**/CMakeLists.txt'
-    - '**.cmake'
-    - '**.cmake.in'
+  workflow_dispatch:
   pull_request:
-    branches:
-    - master
     paths:
-    - '**/CMakeLists.txt'
-    - '**.cmake'
-    - '**.cmake.in'
+      - '.github/workflows/cmake-format.yml'
+      - '.cmake-format.yml'
+      - 'CMakeLists.txt'
+      - 'src/CMakeLists.txt'
+      - 'data/CMakeLists.txt'
+      - 'lang/CMakeLists.txt'
+      - 'src/chkjson/CMakeLists.txt'
+      - 'tests/CMakeLists.txt'
+      - 'tools/format/CMakeLists.txt'
+      - 'tools/clang-tidy-plugin/CMakeLists.txt'
+      - 'cmake_uninstall.cmake.in'
+
+concurrency:
+  group: cmake-format-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
   check:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: install cmakelang
-      run: python3 -m pip install -U cmakelang
-    - name: run cmake-lint
-      run: python3 -m cmakelang.lint CMakeLists.txt src/CMakeLists.txt data/CMakeLists.txt lang/CMakeLists.txt src/chkjson/CMakeLists.txt tools/format/CMakeLists.txt tools/clang-tidy-plugin/CMakeLists.txt cmake_uninstall.cmake.in -c .cmake-format.yml
+    name: cmake-format linting
 
+    runs-on: cdda-ci
+
+    timeout-minutes: 15
+
+    steps:
+    # persist-credentials: false because nothing here pushes. The default leaves
+    # a token in the workspace .git/config for the life of the job.
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      with:
+        persist-credentials: false
+
+    # cmakelang and PyYAML are baked into the runner image at pinned versions,
+    # replacing upstream's `pip install -U cmakelang`. That install was unpinned
+    # and, on this image, insufficient: cmakelang reads .cmake-format.yml by
+    # trying yaml then json then python, and PyYAML is a dependency it does not
+    # declare. Without it the job dies with rc 2 and an internal-error traceback
+    # before linting anything.
+    #
+    # The PyYAML import is asserted, not just the version. A cmakelang that
+    # cannot read its own config is the failure this guards against, and it does
+    # not present as a version problem.
+    - name: verify cmakelang
+      run: |
+        ver=$( python3 -c 'import cmakelang; print(cmakelang.__version__)' 2>&1 || true )
+        [ "$ver" = "0.6.13" ] || {
+          echo "cmakelang must be 0.6.13, found: ${ver:-cmakelang not installed}" >&2
+          exit 1
+        }
+        python3 -c 'import yaml' 2>/dev/null || {
+          echo "PyYAML missing -- cmakelang cannot parse .cmake-format.yml" >&2
+          exit 1
+        }
+
+    # cmake-lint reports; unlike astyle and json_formatter it never rewrites, so
+    # there is no corrections step to show. src/third-party/CMakeLists.txt is
+    # excluded on purpose (vendored, 42 findings), the same exclusion astyle
+    # makes for the same directory.
+    - name: run cmake-lint
+      run: |
+        python3 -m cmakelang.lint \
+          CMakeLists.txt \
+          src/CMakeLists.txt \
+          data/CMakeLists.txt \
+          lang/CMakeLists.txt \
+          src/chkjson/CMakeLists.txt \
+          tests/CMakeLists.txt \
+          tools/format/CMakeLists.txt \
+          tools/clang-tidy-plugin/CMakeLists.txt \
+          cmake_uninstall.cmake.in \
+          -c .cmake-format.yml

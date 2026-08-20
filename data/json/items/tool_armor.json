@@ -1121,7 +1121,7 @@
     "color": "light_gray",
     "ammo": "battery",
     "charges_per_use": 1,
-    "use_action": [ "CAMERA", "PORTABLE_GAME", "EINKTABLETPC", "ELECTRICSTORAGE", "EBOOKSAVE", "EBOOKREAD" ],
+    "use_action": [ "CAMERA", "PORTABLE_GAME", "EMOVEDATA", "ESTORAGE", "EBOOKSAVE", "EBOOKREAD" ],
     "tick_action": [ "EPIC_MUSIC" ],
     "pocket_data": [
       {
@@ -1151,7 +1151,15 @@
       "THERMOMETER",
       "WATER_BREAK",
       "PADDED",
-      "ELECTRONIC"
+      "ELECTRONIC",
+      "EI_DNLOAD",
+      "EI_UPLOAD",
+      "EI_BOOK",
+      "EI_RECIPE",
+      "EI_PHOTO_E",
+      "EI_PHOTO_M",
+      "EI_PHOTO_F",
+      "EI_MUSIC"
     ]
   },
   {

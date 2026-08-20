@@ -386,8 +386,8 @@
       "CAMERA",
       "CALORIES_INTAKE_TRACKER",
       "PORTABLE_GAME",
-      "EINKTABLETPC",
-      "ELECTRICSTORAGE",
+      "EMOVEDATA",
+      "ESTORAGE",
       "EBOOKSAVE",
       "EBOOKREAD",
       {
@@ -410,6 +410,14 @@
       "WATER_BREAK",
       "CALORIES_INTAKE",
       "ELECTRONIC",
+      "EI_DNLOAD",
+      "EI_UPLOAD",
+      "EI_BOOK",
+      "EI_RECIPE",
+      "EI_PHOTO_E",
+      "EI_PHOTO_M",
+      "EI_PHOTO_F",
+      "EI_MUSIC",
       "MUNDANE",
       "INVENTOR_CRAFTED",
       "ELECTROKINETIC_CHARGEABLE"
@@ -460,8 +468,8 @@
     "revert_to": "vision_halo",
     "use_action": [
       "CAMERA",
-      "EINKTABLETPC",
-      "ELECTRICSTORAGE",
+      "EMOVEDATA",
+      "ESTORAGE",
       "EBOOKSAVE",
       "EBOOKREAD",
       {

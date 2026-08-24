@@ -880,9 +880,14 @@ std::string io::enum_to_string<aggregate_type>( aggregate_type agg )
 
 std::optional<double> svtod( std::string_view token )
 {
+    // strtod needs a NUL-terminated string; string_view guarantees none, so the view
+    // has to be copied before it is parsed.
+    // cannot properly fix this without a deeper rewrite or breaking for other localizations.
+    std::string const buf( token );
+    char const *const begin = buf.c_str();
     char *pEnd = nullptr;
-    double const val = std::strtod( token.data(), &pEnd );
-    if( pEnd == token.data() + token.size() ) {
+    double const val = std::strtod( begin, &pEnd );
+    if( pEnd == begin + buf.size() ) {
         return { val };
     }
     errno = 0;

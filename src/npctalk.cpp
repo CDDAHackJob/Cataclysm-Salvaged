@@ -1932,7 +1932,11 @@ int talk_trial::calc_chance( dialogue &d ) const
     int chance = difficulty;
     switch( type ) {
         case NUM_TALK_TRIALS:
-            dbg( D_ERROR ) << "called calc_chance with invalid talk_trial value: " << type;
+            // talk_trial_type's underlying type is unsigned char, so streaming it
+            // straight to an ostream picks the CHARACTER overload.
+            // casting to make the number readable.
+            dbg( D_ERROR ) << "called calc_chance with invalid talk_trial value: "
+                           << static_cast<int>( type );
             break;
         case TALK_TRIAL_NONE:
             chance = 100;

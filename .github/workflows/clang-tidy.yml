@@ -1,75 +1,58 @@
 name: Clang-tidy 17
 
-# Static analysis, and the only workflow in this set that ships CDDA's OWN
-# checks: tools/clang-tidy-plugin/ builds CataAnalyzerPlugin, 41 project-specific
-# checks enforcing this codebase's conventions rather than generic C++ advice.
-# The plugin carries its own test suite, which is run BEFORE its findings are
-# trusted -- 46 lit tests, measured passing against LLVM 17 on bookworm.
+# HackJob's Summary:
+# Workflow rebuilt and tested extensively with Claude Opus.
+# Its comments are condensed into "caveman" claude and may be a bit confusing.
+# Some sections will be referring to items within a plan document not in the repo.
+# These are notes for myself and Claude.
+# To summarize the rewrite, we pinned the version and minimized relying on external sources.
+# We are also in the process of moving over to clang 21, but that introduces many new issues
+# to solve that clang 17 lets pass.
+# ~HackJob
 #
-# THIS ONE STAYS A PULL-REQUEST GATE, unlike CBA.yml and iwyu.yml. Those emit a
-# profile and an advisory report -- no verdict, so nothing to gate on. This emits
-# defects. The difference is deliberate, not stylistic.
+# Static analysis, and the only workflow here shipping CDDA's OWN checks:
+# tools/clang-tidy-plugin/ builds CataAnalyzerPlugin, 36 project-specific checks
+# enforcing this codebase's conventions rather than generic C++ advice. Its 46
+# lit tests run BEFORE its findings are trusted (measured passing on LLVM 17).
 #
-# AND IT KEEPS ITS DIFF-SCOPING, which iwyu.yml dropped. Same machinery, opposite
+# A PULL-REQUEST GATE, unlike CBA.yml and iwyu.yml. Those emit a profile and an
+# advisory report -- no verdict, nothing to gate on. This emits defects.
+#
+# AND IT KEEPS DIFF-SCOPING, which iwyu.yml dropped -- same machinery, opposite
 # conclusion, because the arithmetic differs by two orders of magnitude:
 #
 #                          per file (avg)   whole tree, as configured
-#   IWYU                   ~0.3 s           197 s    at 16 jobs
+#   IWYU                   ~0.3 s           197 s    at nproc
 #   clang-tidy + plugin    ~33 s CPU        ~90 min  at 4 jobs (52 s of it setup)
 #
-# `make includes` costs 7 s either way (614 .inc files, 25.7 MB of header trees
-# -- measured, and cheaper than an earlier draft of iwyu.yml claimed). Against
-# IWYU it buys almost nothing. Here it is worth keeping -- but MUCH LESS THAN AN
-# EARLIER VERSION OF THIS COMMENT CLAIMED, which said scoping was "the difference
-# between an hour and a half and a couple of minutes".
+# `make includes` costs 7 s either way (614 .inc files, 25.7 MB). Against IWYU it
+# buys nothing; here it is worth keeping, but only for a .cpp-only PR.
 #
-# That holds only for a pull request touching a couple of .cpp files. MEASURED
-# 2026-08-16 on the real old-fork..master release diff, replayed against
-# experimental: 17 changed files resolved to 478 of 647 TUs -- 74% OF THE TREE --
-# and took 80 min against ~90 whole-tree. An 11% saving, not a 98% one.
+# SCOPING SAVES FAR LESS THAN THAT RATIO SUGGESTS. Measured 2026-08-16 on the real
+# old-fork..master release diff replayed against experimental: 17 changed files
+# resolved to 478 of 647 TUs -- 74% OF THE TREE -- taking 80 min against ~90
+# whole-tree. An 11% saving, not a 98% one.
 #
-# The reason is structural, not incidental: 6 of those 17 files are HEADERS, and
-# item.h / flag.h / iuse.h are included nearly everywhere, so scoping cannot
-# exclude much. Worse, the surviving TUs are the EXPENSIVE ones -- 39.7 s of CPU
-# each against the 33.1 s whole-tree average -- precisely because they are the
-# ones including the big headers.
+# Structural, not incidental: 6 of those 17 are HEADERS, and item.h / flag.h /
+# iuse.h are included nearly everywhere. Worse, the survivors are the EXPENSIVE
+# TUs -- 39.7 s CPU each against a 33.1 s average -- precisely because they pull
+# in the big headers. So scoping is very effective for a .cpp-only change and
+# nearly useless for a header change, and a release PR is mostly the latter.
+# Size runner availability for ~90 min on any PR touching src/*.h.
 #
-# So the honest statement is: scoping is very effective for a .cpp-only change
-# and nearly useless for a header change, and a release PR is mostly the latter.
-# Size the runner's availability for ~90 min on any PR that touches src/*.h,
-# not for the two-minute case.
+# THE SOUND WHOLE-TREE MEASUREMENT, 2026-08-16: 537 of 647 TUs in 75 min at 4
+# jobs, setup measured separately at 52 s (apt 1 s, LLVM 8 s, cmake <1 s, plugin
+# build 41 s, lit 2 s). Setup is 1.2%, so 4448 s of 4500 was analysis: ~33 s CPU
+# and ~8.3 s wall per TU, hence ~90 min whole-tree at 4 jobs, ~120 at upstream's 3.
 #
-# PROVENANCE, because every earlier number in this comment was wrong and each
-# wrong one was believed for a while. The sound measurement is from 2026-08-16:
-# 537 of 647 translation units in 75 min at 4 parallel jobs, with setup measured
-# separately at 52 s -- apt 1 s, LLVM install 8 s, cmake configure <1 s, plugin
-# build 41 s, 46 lit tests 2 s. Setup is therefore 1.2% of the job, so 4448 s of
-# the 4500 was analysis: ~33 s of CPU per TU, ~8.3 s of wall per TU, hence
-# ~90 min whole-tree at the 4 jobs this fork now defaults to and ~120 min at
-# upstream's 3.
+# That 52 s CLOSES an optimisation. Nothing in setup is cached -- the plugin is
+# rebuilt every run -- and caching it returns 41 s against 5400 s, under 1%. Same
+# for the scripting layer: 647 wrapper spawns total 0.2 s, jq is unmeasurable.
+# This job is ~98% analysis, so the only lever is analysing fewer TUs.
 #
-# That 52 s is worth keeping because it CLOSES an optimisation, not because it
-# opens one. Nothing in setup is cached -- the plugin is rebuilt from its 127
-# sources on every single run -- and caching it would return 41 s against a
-# 5400 s job, under 1%. The same applies to the whole scripting layer, measured
-# at the same time: 647 wrapper spawns total 0.2 s, and jq over
-# compile_commands.json is unmeasurable. This job is ~98% clang-tidy analysing
-# translation units, and there is no overhead left to remove -- only the option
-# of analysing fewer of them, which is exactly what diff-scoping does.
-#
-# Superseded, listed so they are not resurrected from an older log:
-#   40.7 s/file  -- a six-file sample that happened to hit expensive TUs
-#   ~27 min      -- 40.7 x 647 / 16, wrong on BOTH terms (bad average, and
-#                   parallelism assumed to be nproc when the script hardcoded 3
-#                   at the time; it defaults to 4 in this fork now)
-#   3001 s       -- a 50-minute SHELL timeout, i.e. a run cut off at ~40%
-#                   coverage and misread as a completed whole-tree run
-#   ~13 s/file   -- derived from that same truncated 3001 s
-#
-# The pattern to notice: three of the four were truncations or extrapolations
-# presented as measurements. A whole-tree timing is only trustworthy if the run
-# that produced it analysed all 647 TUs and left no "context deadline exceeded"
-# in the log.
+# A WHOLE-TREE TIMING IS ONLY ADMISSIBLE if the run analysed all 647 TUs and left
+# no "context deadline exceeded" in the log. Several earlier figures here were
+# truncated runs or small-sample extrapolations read as measurements.
 
 on:
   pull_request:
@@ -90,18 +73,15 @@ on:
       - '**/CMakeLists.txt'
       - '**/Makefile'
       # ADDED. `.clang-tidy` IS the verdict -- it enables and disables the check
-      # list, so editing it changes every future result while touching no code.
-      # It was absent, meaning the one file that decides what this workflow does
-      # could not trigger it. Note the script's escalation regex already matches
-      # `.clang-tidy`, so the two halves disagreed: a change here escalated
-      # correctly to a whole-tree run whenever something ELSE triggered the job,
-      # and did nothing at all on its own.
+      # list, so editing it changes every future result while touching no code,
+      # and it was absent. The script's escalation regex already matched it, so
+      # the two halves disagreed: a change here escalated correctly whenever
+      # something ELSE triggered the job, and did nothing on its own.
       - '.clang-tidy'
-      # ADDED, same asymmetry. `**/CMakeLists.txt` misses `CMakeModules/**`,
-      # which holds the Find*.cmake modules that decide how SDL2, Iconv and
-      # Libintl are located -- inputs to the very configure step this job runs.
-      # The escalation regex matches "cmake" and would have escalated them; the
-      # trigger could not fire.
+      # ADDED, same asymmetry. `**/CMakeLists.txt` misses `CMakeModules/**` --
+      # the Find*.cmake modules deciding how SDL2, Iconv and Libintl are located,
+      # inputs to the configure step this job runs. The escalation regex matched
+      # them; the trigger could not fire.
       - 'CMakeModules/**'
       - 'build-scripts/clang-tidy.sh'
       - 'build-scripts/clang-tidy-wrapper.sh'
@@ -109,34 +89,29 @@ on:
       - 'tools/clang-tidy-plugin/**'
       - '.github/workflows/clang-tidy.yml'
 
-  # ADDED. Pull requests here happen only at release (experimental -> master), so
-  # without this the first time 41 custom checks see a change is months after it
-  # was written. Dispatch lets the analysis run mid-cycle against experimental.
-  #
-  # A dispatched run has no changed-file list, and clang-tidy.sh already handles
-  # that correctly: `files_changed` is absent, so tidyable_cpp_files resolves to
-  # "unknown" and it falls back to analysing everything. Dispatch therefore means
-  # WHOLE TREE, ~90 minutes, by construction rather than by a flag.
+  # ADDED. PRs here happen only at release (experimental -> master), so without
+  # this the first time 36 custom checks see a change is months after it was
+  # written. A dispatched run has no changed-file list, and clang-tidy.sh handles
+  # that: `files_changed` is absent, tidyable_cpp_files resolves to "unknown", and
+  # it analyses everything. Dispatch means WHOLE TREE, ~90 min, by construction.
   workflow_dispatch:
 
-# Native concurrency, replacing upstream's separate skip-duplicates job built on
-# fkirc/skip-duplicate-actions@master -- a mutable branch ref, and one of the
-# four the plan wants gone (fix 2). That job also carried `continue-on-error`
-# plus an `if:` on its output, so a failure left the output empty and the check
-# ran anyway; the native form does the same work with no third-party action and
-# no failure path to reason about.
+# Native concurrency, replacing upstream's separate skip-duplicates job on
+# fkirc/skip-duplicate-actions@master -- a mutable branch ref, one of the four
+# the plan wants gone (fix 2). That job also carried `continue-on-error` plus an
+# `if:` on its output, so a failure left the output empty and the check ran
+# anyway. The native form has no third-party action and no failure path.
 concurrency:
   group: clang-tidy-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
 
-# `pull-requests: read` is NOT decorative here: the `determine changed files`
-# step calls `pulls.listFiles`, which GitHub scopes under pull-requests, not
-# contents. With `contents: read` alone that call is a 403 on a private repo,
-# and since github-script throws on an API error the whole gate fails on every
-# pull request. Whether Forgejo enforces the block this granularly is UNVERIFIED
-# -- it may well hand out a broader token -- but the declaration is correct
-# under GitHub semantics, costs nothing if Forgejo ignores it, and this workflow
-# is the only one in the set that touches the API at all.
+# `pull-requests: read` is NOT decorative: `determine changed files` calls
+# `pulls.listFiles`, which GitHub scopes under pull-requests, not contents. With
+# `contents: read` alone that is a 403 on a private repo, and github-script
+# throws on an API error, so the gate fails on every PR. Whether Forgejo enforces
+# this granularly is UNVERIFIED -- it may hand out a broader token -- but the
+# declaration is correct under GitHub semantics and costs nothing if ignored.
+# This is the only workflow in the set that touches the API.
 permissions:
   contents: read
   pull-requests: read
@@ -150,14 +125,11 @@ jobs:
     runs-on: cdda-ci
 
     # NO MATRIX. Upstream split this into 'src' and 'other' subsets to fit
-    # GitHub's per-job runtime limit. That split buys nothing here and costs
-    # real time: this box has ONE runner, so the two halves queue rather than
-    # parallelise, while each pays the full setup again -- LLVM install, plugin
-    # build, cmake configure, make includes. One job doing the whole thing is
-    # strictly faster on a single-runner host.
-    #
-    # clang-tidy.sh still honours CATA_CLANG_TIDY_SUBSET; leaving it unset means
-    # "no subset filter", which is what the script's default case does.
+    # GitHub's per-job runtime limit. Here that costs real time: ONE runner, so
+    # the halves queue rather than parallelise and each pays full setup again
+    # (LLVM install, plugin build, cmake configure, make includes). One job is
+    # strictly faster on a single-runner host. clang-tidy.sh still honours
+    # CATA_CLANG_TIDY_SUBSET; unset means no subset filter.
     env:
       CMAKE: 1
       CLANG: clang++-17
@@ -173,48 +145,40 @@ jobs:
     #   4 jobs   537 of 647 TUs in 75 min   -> whole tree ~90 min   <= in use
     #   3 jobs   (upstream's default)       -> whole tree ~120 min
     #
-    # 300 is over 3x the 4-job projection. The generosity is the point: this is a
-    # ceiling that should only ever catch a genuinely stuck job, not a budget
-    # anything is expected to run close to. Sized against the 3-job figure too,
-    # so it stays valid if CLANG_TIDY_JOBS is ever set back down.
+    # 300 is over 3x the 4-job projection, deliberately: a ceiling that catches a
+    # stuck job, not a budget to run close to. The 3-job row is upstream's default
+    # and is kept only to show the ceiling holds there too -- THIS JOB RUNS AT 4,
+    # the measured limit on this cooling. Do not raise it.
     #
-    # EVERY EARLIER VALUE HERE WAS TOO SMALL, AND EACH TRUNCATED A RUN THAT WAS
-    # THEN READ AS A COMPLETED MEASUREMENT. 45 was set assuming parallelism would
-    # be raised; 75 came from a "3001 s whole tree" figure that was itself a
-    # 50-minute shell timeout cutting a run off at 40% coverage. Both left
-    # `context deadline exceeded` in the log while the job status said only
-    # "failed" -- easy to misattribute to findings, because this check
-    # legitimately fails on findings too.
+    # A RED JOB MEANS FINDINGS *OR* TRUNCATION, and the two look alike: a timed-out
+    # run leaves `context deadline exceeded` in the log while the status says only
+    # "failed", exactly what a genuine finding produces. Grep for that string
+    # before believing a finding count, and treat a TU count below 647 as an
+    # incomplete run. Earlier, smaller timeouts truncated runs that were then read
+    # as completed measurements -- what the generosity above prevents.
     #
-    # So a red job here means findings OR truncation, and the two look alike at a
-    # glance. Grep the log for "context deadline exceeded" before believing any
-    # finding count, and treat a TU count below 647 as an incomplete run.
+    # forgejo-runner's own `timeout:` in config.yaml is a SEPARATE ceiling, checked
+    # first, and the LOWER wins. Raised 3h -> 5h to match this; lower it and this
+    # number silently stops applying, with nothing in the log naming which fired.
+    # Change both together.
     #
-    # NOTE: forgejo-runner's own `timeout:` in config.yaml is a SEPARATE ceiling,
-    # checked first, and the LOWER of the two wins. It was raised 3h -> 5h to
-    # match this value; if it is ever lowered, this number silently stops
-    # applying and jobs die at the runner's figure instead, with nothing in the
-    # log naming which limit fired. Change both together.
-    #
-    # The whole-tree path is reachable from an ordinary pull request, not just
-    # dispatch: clang-tidy.sh escalates to analysing everything when a change
-    # touches clang-tidy, build-scripts or cmake, on the reasoning that the RULES
-    # changed. That is ~90 minutes during which the single runner is busy.
+    # The whole-tree path is reachable from an ordinary PR, not just dispatch:
+    # clang-tidy.sh escalates when a change touches clang-tidy, build-scripts or
+    # cmake, since the RULES changed. ~90 min with the single runner busy.
     timeout-minutes: 300
 
     steps:
-    # LLVM 17 stays a workflow step rather than being baked, per CDDA_CI_PLAN.md
-    # 11.4: version-pinned toolchains are the standing exception, because baking
-    # one makes every future bump an image rebuild. Everything else this job
-    # needs IS baked into cdda-ci -- SDL2/FLAC/PulseAudio for the TILES=1 SOUND=1
-    # configuration, plus cmake, ninja, gettext, jq and lit.
+    # LLVM 17 stays a workflow step rather than baked (11.4): version-pinned
+    # toolchains are the standing exception, since baking makes every bump an
+    # image rebuild. This is the LAST job on 17 -- bumping a GATE surfaces 746
+    # findings (CDDA_TOOLCHAIN_PLAN.md step 5, open). iwyu.yml moved to LLVM 21 on
+    # 2026-08-22 and takes it from the image, so this step is shared with nothing.
+    # Everything else IS baked into cdda-ci: SDL2/FLAC/PulseAudio for TILES=1
+    # SOUND=1, plus cmake, ninja, gettext, jq and lit.
     #
-    # Two fixes to upstream's version of this step, both measured:
+    # Two fixes to upstream's step, measured at 6 s total:
     #   * `apt-key add` is deprecated and gone in newer Debian -> signed-by keyring
-    #   * the repo line pointed at `jammy` (Ubuntu 22.04), which does not exist
-    #     for this base image -> bookworm
-    # Measured at 6 s. iwyu.yml uses the same repo and the same LLVM 17, so the
-    # two share one toolchain rather than pulling 17 and 19 onto the same box.
+    #   * the repo line named `jammy` (Ubuntu 22.04), absent here -> bookworm
     - name: install LLVM 17
       run: |
         set -eu
@@ -273,73 +237,75 @@ jobs:
     # step is inert rather than harmful.
     - uses: https://github.com/ammaraskar/gcc-problem-matcher@cb2e3f949c41b7818628f35f8484a9b0acf90cf9 # master @ 2026-08-15
 
-    # The whole job in one script, upstream's own. It configures with the plugin
-    # enabled, builds CataAnalyzerPlugin, runs the 46 lit tests, generates the
-    # compile database, resolves which files the change actually affects, and
-    # analyses them. Its escape hatch is the part worth preserving: a change to
-    # clang-tidy, build-scripts or cmake escalates to the whole tree, because a
-    # scoped run against changed RULES would be a false all-clear.
-    # CLANG_TIDY_JOBS IS NOT SET HERE -- clang-tidy.sh now defaults to 4, raised
-    # from upstream's 3 in this fork. The default lives in the script rather than
-    # in this env block so that anyone invoking the script by hand on this box
-    # gets the same safe value, instead of it applying only when CI happens to be
-    # the caller. THERMALS, not wall time, set that number: they are the binding
-    # constraint on this host. Measured 2026-08-16, watched live at the hardware:
+    # The whole job in one script, upstream's own: configure with the plugin,
+    # build CataAnalyzerPlugin, run the 46 lit tests, generate the compile
+    # database, resolve affected files, analyse. Its escape hatch is worth
+    # preserving -- a change to clang-tidy, build-scripts or cmake escalates to
+    # the whole tree, because a scoped run against changed RULES is a false
+    # all-clear.
+    #
+    # THREAD COUNT IS PINNED IN THE SCRIPT, not set here, so a hand-run on this box
+    # gets the same safe value instead of it applying only when CI is the caller.
+    # THERMALS set that number. Measured 2026-08-16 live at the hardware:
     #
     #   -P3    peak well under 90 C   work migrates between cores, die breathes
     #   -P4    peak 87 C, ZERO throttle events over 2 min at 100 ms sampling  <=
-    #   -P6    ~90 C sustained, 96 throttle events; refused to migrate to some
-    #          cores, so the same few P-cores carried it and stayed hot
+    #   -P6    ~90 C sustained, 96 throttle events; refused to migrate, so the
+    #          same few P-cores carried it and stayed hot
     #   -P12   killed early, still reached 100 C on 6 P-cores
     #   -P16   package 100 C (TjMax), cores throttling
     #
-    # The CPU fan (pwm2) was already at 255/255 in every hot case, so there was
-    # no cooling headroom to find; the case fans cannot help a saturated die.
-    # Narrowing the cpuset from 0-15 to 0-11 did NOT help, which is the result
-    # that matters: the constraint is sustained P-core occupancy, not thread
-    # count, and clang-tidy is the worst offender in the whole set -- continuous
-    # clang frontends with no link or I/O phases to let the die breathe. A full
-    # CBA compile at the same width peaked below 95 C.
+    # Confirmed 2026-08-23 under sustained load: 50 min of whole-tree analysis at
+    # -P4 peaked at 84 C with a zero throttle delta -- BELOW the 87 C above, which
+    # came from a 2-minute sample. The documented figure is conservative.
     #
-    # THROTTLE COUNTERS, NOT TEMPERATURE, ARE THE GROUND TRUTH HERE
-    # (/sys/devices/system/cpu/cpu*/thermal_throttle/). They are event-driven, so
-    # they cannot miss an excursion between samples the way a 2-second thermometer
-    # poll can -- which is exactly how the -P16 run looked survivable at first.
+    # The CPU fan (pwm2) was already at 255/255 in every hot case, so there was no
+    # cooling headroom to find; case fans cannot help a saturated die.
     #
-    # 4 it is: measured-safe and ~25% faster than 3. The jump from 4 to 6 is
-    # where behaviour changes qualitatively rather than gradually -- at 4 the
-    # scheduler still migrates work between cores and the die gets to cool
-    # between bursts, while at 6 it parked the load on the same few P-cores and
-    # held them hot. So this is not a point on a smooth curve to be nudged
-    # upward; it is the last value on the good side of a cliff.
+    # -P IS THE ONLY LEVER HERE. Narrowing the runner cpuset 0-15 -> 0-11 changed
+    # nothing for this job and could not: at 4 threads it is already below both,
+    # so the cpuset never binds. That narrowing was for the `nproc` jobs, CBA and
+    # iwyu. And clang-tidy is the worst offender in the set -- continuous clang
+    # frontends with no link or I/O phase to let the die breathe. A full CBA
+    # compile at the same width peaked below 95 C.
     #
-    # If it ever needs to be faster still, the untested lever is the E-cores
-    # (cpuset 0-7,16-19): they idled at 77 C while P-cores hit 96 C, and every
-    # cpuset tried so far has excluded them entirely.
+    # USE BOTH COUNTERS AND TEMPERATURE, neither alone. The counters
+    # (/sys/devices/system/cpu/cpu*/thermal_throttle/) are event-driven and cannot
+    # miss an excursion between samples, which is how the -P16 run first looked
+    # survivable. But measured 2026-08-22 across every harness run, the counter
+    # delta was ZERO while cores sat at 95-96 C -- the hardware did not intervene,
+    # so a counter-only test reports "clean" one degree under TjMax. Counters
+    # confirm nothing was missed; TEMPERATURE is what you abort on.
+    #
+    # 4 is measured-safe and ~25% faster than 3. The 4 -> 6 jump is qualitative,
+    # not gradual: at 4 the scheduler migrates work and the die cools between
+    # bursts; at 6 it parks the load on the same P-cores and holds them hot. The
+    # last value on the good side of a cliff, not a point to nudge upward.
+    #
+    # The untested lever, if it must be faster: the E-cores (cpuset 0-7,16-19)
+    # idled at 77 C while P-cores hit 96 C, and every cpuset so far excludes them.
     - name: run clang-tidy
       run: bash ./build-scripts/clang-tidy.sh
 
-    # Which checks cost the most, from the plugin's own profiling output --
-    # written by clang-tidy-wrapper.sh, which adds --enable-check-profile and
+    # Which checks cost the most, from the plugin's profiling output --
+    # clang-tidy-wrapper.sh adds --enable-check-profile and
     # --store-check-profile=clang-tidy-trace whenever the plugin .so is present.
-    # Runs even on failure, since a slow check is most interesting when the job
-    # is already painful.
+    # Runs even on failure: a slow check matters most when the job already hurts.
     #
-    # PURELY PRESENTATIONAL, SO IT MUST NEVER DECIDE THE JOB. `run:` executes
-    # under `bash -eo pipefail`, so any non-zero here turns an otherwise-green
-    # gate red for a reason that has nothing to do with the code under review.
-    # `continue-on-error` makes that structural rather than relying on the body
-    # being careful.
+    # PURELY PRESENTATIONAL, SO IT MUST NEVER DECIDE THE JOB. `run:` executes under
+    # `bash -eo pipefail`, so any non-zero here reddens a green gate for a reason
+    # unrelated to the code under review. `continue-on-error` makes that
+    # structural rather than trusting the body to be careful.
     #
-    # The `[ -d ]` guard alone was not enough, measured: an EXISTING BUT EMPTY
-    # clang-tidy-trace leaves `clang-tidy-trace/*.json` unexpanded, and jq then
-    # fails with `Could not open file clang-tidy-trace/*.json`. Reachable when
-    # clang-tidy is invoked but dies before writing any profile. The glob is
-    # tested directly instead, which covers both the missing and the empty case.
+    # A `[ -d ]` guard is NOT enough, measured: an existing but EMPTY
+    # clang-tidy-trace leaves `clang-tidy-trace/*.json` unexpanded and jq fails
+    # with `Could not open file clang-tidy-trace/*.json` -- reachable when
+    # clang-tidy runs but dies before writing a profile. Testing the glob covers
+    # both the missing and the empty case.
     #
-    # The aggregation sums each check's wall time ACROSS all translation units
-    # before ranking -- verified against real profile shape, including that a
-    # check appearing in two files is summed rather than counted twice.
+    # The aggregation sums each check's wall time ACROSS all TUs before ranking --
+    # verified against real profile shape, including that a check appearing in two
+    # files is summed, not counted twice.
     - name: show most time consuming checks
       if: always()
       continue-on-error: true

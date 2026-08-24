@@ -1,42 +1,44 @@
 name: Text Changes Analyzer
 
-# Spell-checks the in-game text a pull request CHANGES, by generating a .pot on
-# the base commit and on the merge commit and diffing the two. Diff-based by
-# construction, so it does not inherit the whole-tree baseline problem that
-# astyle and json have -- but see the warn-only decision at the bottom of this
-# header, which is a measured consequence of what the whole-tree scan contains.
+# HackJob's Summary:
+# Workflow rebuilt and tested extensively with Claude Opus.
+# Its comments are condensed into "caveman" claude and may be a bit confusing.
+# Some sections will be referring to items within a plan document not in the repo.
+# These are notes for myself and Claude.
+# To summarize the rewrite, we pinned the version and minimized relying on external sources.
+# ~HackJob
 #
-# TRIGGER. Upstream filtered on '**.json', which is the same inverted glob that
-# assign_mission_target_needs_om_special.yml carried. Under Forgejo's doublestar
+# Spell-checks the in-game text a PR CHANGES: generate a .pot on the base commit
+# and on the merge commit, diff the two. Diff-based by construction, so it avoids
+# the whole-tree baseline problem astyle and json have -- but see the warn-only
+# decision at the bottom, a measured consequence of what that scan contains.
+#
+# TRIGGER. Upstream filtered on '**.json', the same inverted glob
+# assign_mission_target_needs_om_special.yml carried: under Forgejo's doublestar
 # matcher '**' is recursive only as a whole path component, so '**.json' means
 # root-level *.json -- CMakePresets.json and org.cataclysmdda.CataclysmDDA.json.
-# lang/update_pot.sh extracts from `data` (extract_json_strings.py -i data), so
-# the filter matched two files the extractor never reads and missed all 5,379 it
-# does. JSON is the majority of translatable text in this game, so as committed
-# this check only ever saw C++ string changes.
+# update_pot.sh extracts from `data` (extract_json_strings.py -i data), so the
+# filter matched two files the extractor never reads and missed all 5,379 it
+# does. JSON is most of the translatable text here, so as committed this check
+# only ever saw C++ string changes.
 #
-# src/*.h and src/*.cpp are LEFT SINGLE-STAR deliberately, and are not an
-# oversight of the same class. update_pot.sh invokes xgettext on literally
-# `src/*.cpp src/*.h`, so the filter already matches the extractor's corpus
-# exactly; widening to src/**/*.cpp would add src/third-party/, which contributes
-# no translatable strings and would trigger this job on vendored code.
+# src/*.h and src/*.cpp are LEFT SINGLE-STAR deliberately, not the same
+# oversight: update_pot.sh runs xgettext on literally `src/*.cpp src/*.h`, so the
+# filter already matches the extractor's corpus. Widening to src/**/*.cpp would
+# add src/third-party/, which has no translatable strings.
 #
-# The rest of the list is what upstream omitted: the tooling that DECIDES the
-# verdict. update_pot.sh itself, unicode_check.py, the three spell_check scripts,
-# and tools/spell_checker/**, which holds the tokenizer and the checker proper --
-# change either and the same changed string gets a different answer. This is the
-# same omission json.yml had, where a change to the formatter's own source never
-# re-ran the formatter.
+# The rest of the list is what upstream omitted -- the tooling that DECIDES the
+# verdict: update_pot.sh, unicode_check.py, the three spell_check scripts, and
+# tools/spell_checker/** (tokenizer and checker). Change any and the same string
+# gets a different answer. Same omission json.yml had, where editing the
+# formatter's source never re-ran the formatter.
 #
-# ONE ENTRY IN THAT DIRECTORY EARNS ITS PLACE DIFFERENTLY, and the obvious
-# reasoning about it is wrong. dictionary.txt does not affect a pull request's
-# verdict at all: this check diffs base .pot against merge .pot, and a dictionary
-# edit changes no STRING, so added_messages is empty and the run reports nothing
-# no matter which words were added. Measured -- a dictionary-only PR triggers the
-# job and it correctly finds nothing. The dictionary only moves the WHOLE-TREE
-# audit's answer (workflow_dispatch). It stays covered because '**' is the right
-# shape for the rest of the directory, not because a word added here can change
-# what a PR is told.
+# dictionary.txt IS COVERED FOR A DIFFERENT REASON than the obvious one. It
+# cannot affect a PR verdict: this diffs base .pot against merge .pot, and a
+# dictionary edit changes no STRING, so added_messages is empty and the run
+# reports nothing whatever was added (measured -- a dictionary-only PR triggers
+# the job and correctly finds nothing). It only moves the WHOLE-TREE audit's
+# answer. It stays covered because '**' is right for the rest of the directory.
 on:
   workflow_dispatch:
   pull_request:
@@ -73,68 +75,60 @@ jobs:
     timeout-minutes: 20
 
     steps:
-    # ONE checkout, where upstream had three.
+    # ONE checkout, where upstream had three: merge commit, base commit, merge
+    # commit again, recovering the two SHAs by regex-matching GitHub's synthetic
+    # merge commit MESSAGE ("Merge <head> into <base>"). Both halves avoidable --
+    # a synthetic merge commit HAS the two commits as parents, so HEAD^1 and
+    # HEAD^2 give the same answer without parsing English prose only GitHub
+    # promises to write.
     #
-    # Upstream checked out the merge commit, then the base commit, then the merge
-    # commit again, and recovered the two SHAs by regex-matching GitHub's
-    # synthetic merge commit MESSAGE ("Merge <head> into <base>"). Both halves of
-    # that are avoidable. A synthetic merge commit already HAS the two commits as
-    # its parents, so HEAD^1 and HEAD^2 are the same answer without parsing
-    # English prose that only GitHub promises to write.
-    #
-    # fetch-depth: 2 is what makes one checkout enough, and it is very nearly
-    # free: measured against this repository, depth 1 is 139 MB / 28 s and depth
-    # 2 is 136 MB / 23 s -- the second commit is a delta, not a second copy.
-    # Full history for comparison is 12 GB. Depth 2 on a merge commit carries
-    # BOTH parents with usable trees; verified on a purpose-built merge-ref
-    # fixture rather than assumed, since "depth" counting across a merge is
-    # exactly the kind of thing that is easy to be wrong about.
+    # fetch-depth: 2 makes one checkout enough and is nearly free: measured here,
+    # depth 1 is 139 MB / 28 s and depth 2 is 136 MB / 23 s -- the second commit
+    # is a delta, not a copy. Full history is 12 GB. Depth 2 on a merge commit
+    # carries BOTH parents with usable trees; verified on a purpose-built
+    # merge-ref fixture, since depth-counting across a merge is easy to get wrong.
     - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       with:
         fetch-depth: 2
         persist-credentials: false
 
-    # FIRST, deliberately, and it is doing two jobs.
+    # FIRST, deliberately, doing two jobs.
     #
-    # It is the live guard on the one pinned dependency NOT pinned for its
-    # verdict: regex drives the tokenizer, and these are 32 cases asserting it
-    # still splits text the way dictionary.txt was curated against.
+    # It guards the one pinned dependency NOT pinned for its verdict: regex drives
+    # the tokenizer, and these are 33 cases asserting it still splits text the way
+    # dictionary.txt was curated against. The cases live in
+    # tools/spell_checker/__init__.py; this script is a six-line wrapper.
     #
     # And importing spell_checker loads pyspellchecker and reads the dictionary,
-    # so this is also the cheapest possible check that the job is running on an
-    # image that actually has them. Put after the .pot generations it would cost
-    # two full extractions before reporting a missing module; here a runner
-    # pointed at a stale cdda-ci tag fails in seconds and names the real cause.
-    # That is not hypothetical -- the config.yaml image line has been missed on
-    # every rebuild so far (CDDA_CI_PLAN.md 11.5a item 1).
+    # making this the cheapest check that the job is on an image that has them.
+    # After the .pot generations it would cost two full extractions before
+    # reporting a missing module; here a runner on a stale cdda-ci tag fails in
+    # seconds and names the cause. Not hypothetical -- the config.yaml image line
+    # has been missed on every rebuild so far (11.5a item 1).
     - name: run the spell checker's tokenizer tests
       run: python3 ./tools/spell_check_unit_test.py
 
     # Resolve what to compare against, and REFUSE to guess.
     #
-    # The failure this guards is specific: if the forge hands us the PR HEAD
-    # instead of a merge commit, HEAD^2 does not exist, and the naive fallback --
-    # treat it as a whole-tree scan -- would report all 1,833 pre-existing
-    # findings as though the PR had introduced them. That is worse than not
-    # running. So on a pull_request the base is either derived from the merge
-    # commit, or taken from the event payload, or the job FAILS.
+    # Specific failure guarded: if the forge hands us the PR HEAD instead of a
+    # merge commit, HEAD^2 does not exist, and the naive fallback -- treat it as a
+    # whole-tree scan -- reports all 1,833 pre-existing findings as though the PR
+    # caused them. Worse than not running. So the base comes from the merge
+    # commit, or from the event payload, or the job FAILS.
     #
-    # workflow_dispatch is a different question with no PR to diff against, and
-    # leaving it undefined would make the Run button a no-op that looks like a
-    # pass. It is defined as the whole-tree audit instead: compare against an
-    # empty .pot, which reports every unrecognized string in the tree. That is
-    # the on-demand form of the measurement this file's warn-only decision rests
-    # on, and it is how you would work the backlog down if you ever chose to.
+    # workflow_dispatch has no PR to diff against, and leaving it undefined would
+    # make the Run button a no-op that looks like a pass. It is the whole-tree
+    # audit instead: compare against an empty .pot, reporting every unrecognized
+    # string. That is the on-demand form of the measurement the warn-only decision
+    # rests on, and how you would work the backlog down.
     - name: resolve comparison base
       id: base
-      # Both values arrive through the environment rather than being pasted into
-      # the script body by ${{ }}. Expression interpolation happens BEFORE the
-      # shell sees the line, so a payload field containing shell metacharacters
-      # would be executed, not compared -- the standard Actions script-injection
-      # shape. A base SHA is a poor vehicle for it and EVENT_NAME is a fixed
-      # vocabulary, so neither is a live risk; they are written this way because
-      # the mixed form is what invites a genuinely unsafe field to be added
-      # inline later.
+      # Both values arrive through the ENVIRONMENT, not pasted in by ${{ }}.
+      # Interpolation happens BEFORE the shell sees the line, so a payload field
+      # holding shell metacharacters would be executed, not compared -- the
+      # standard Actions script-injection shape. Neither field is a live risk here
+      # (a SHA is a poor vehicle, EVENT_NAME is a fixed vocabulary); it is written
+      # this way because the mixed form invites an unsafe field inline later.
       env:
         EVENT_NAME: ${{ github.event_name }}
         PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -146,22 +140,19 @@ jobs:
           exit 0
         fi
 
-        # HEAD^1 is the base and HEAD^2 the incoming head -- on GitHub. That is a
+        # HEAD^1 is the base and HEAD^2 the incoming head -- ON GITHUB. That is a
         # CONVENTION of how the forge builds its synthetic merge commit, not a
-        # property of git, and this job has never run against a real Forgejo pull
-        # request (that is wave C). Getting it backwards would not error: the
-        # diff would simply be computed the wrong way round, and since
-        # spell_check_pr.py only reads diff["added"], a reversed base silently
-        # spell-checks the strings the PR REMOVED and ignores the ones it added.
-        # A green run that checked the wrong side is exactly the shape this file
-        # is otherwise careful about.
+        # property of git, and this has never run against a real Forgejo PR (wave
+        # C). Backwards would not error: the diff is just computed the wrong way
+        # round, and since spell_check_pr.py only reads diff["added"], a reversed
+        # base silently checks the strings the PR REMOVED. A green run that
+        # checked the wrong side is the shape this file is otherwise careful about.
         #
-        # So it is cross-checked rather than assumed, using data already local at
-        # depth 2. When the payload names a base SHA and that SHA is HEAD^2, this
-        # forge orders parents the other way and HEAD^2 is used. When the payload
-        # is absent (or names neither parent, e.g. the base branch has moved on
-        # since the merge was computed) HEAD^1 stands, which is the documented
-        # order and the safe default.
+        # So it is cross-checked from data already local at depth 2. If the
+        # payload names a base SHA equal to HEAD^2, this forge reverses parent
+        # order and HEAD^2 is used. If the payload is absent or names neither
+        # parent (the base branch moved on since the merge was computed), HEAD^1
+        # stands -- the documented order and the safe default.
         if git rev-parse --verify -q HEAD^2 >/dev/null 2>&1; then
           p1=$( git rev-parse HEAD^1 )
           p2=$( git rev-parse HEAD^2 )
@@ -179,12 +170,11 @@ jobs:
           exit 0
         fi
 
-        # Not a merge commit. Fall back to the event payload, which needs an
-        # extra shallow fetch because depth 2 did not reach it. Note this fetch
-        # runs AFTER persist-credentials: false has stripped the token, so on a
-        # private repository it can fail on authentication rather than on the
-        # SHA being wrong -- which is one of the things "unfetchable" below
-        # covers. The primary path never needs it: HEAD^2 is already local.
+        # Not a merge commit. Fall back to the payload, which needs an extra
+        # shallow fetch since depth 2 did not reach it. That fetch runs AFTER
+        # persist-credentials: false stripped the token, so on a private repo it
+        # can fail on AUTH rather than on a bad SHA -- one of the things
+        # "unfetchable" below covers. The primary path never needs it.
         base="${PR_BASE_SHA:-}"
         if [ -n "$base" ] && git fetch --depth 1 origin "$base" >/dev/null 2>&1; then
           echo "mode=diff" >> "$GITHUB_OUTPUT"
@@ -200,11 +190,11 @@ jobs:
         echo "report the tree's pre-existing findings as though this PR caused them." >&2
         exit 1
 
-    # The base tree goes in a linked worktree rather than being checked out over
-    # the top of the workspace. update_pot.sh writes three untracked files into
-    # lang/po/ (gui.pot, json.pot, cataclysm-dda.pot -- none of them tracked,
-    # despite upstream's defensive `rm -f`), and switching branches under them is
-    # avoidable state to reason about. Worktrees work in a shallow clone.
+    # Linked worktree rather than checking the base out over the workspace.
+    # update_pot.sh writes three UNTRACKED files into lang/po/ (gui.pot, json.pot,
+    # cataclysm-dda.pot -- none tracked, despite upstream's defensive `rm -f`),
+    # and switching branches under them is avoidable state. Worktrees work in a
+    # shallow clone.
     - name: generate translation template on the base commit
       if: steps.base.outputs.mode == 'diff'
       # Same reasoning as PR_BASE_SHA above: this value can originate in the
@@ -216,13 +206,12 @@ jobs:
         git worktree add -q "$RUNNER_TEMP/basewt" "$BASE_REF"
         cd "$RUNNER_TEMP/basewt"
 
-        # Attribute a failure HERE to the base, explicitly. Everything this step
-        # runs is code the pull request did not write, so the bare traceback --
-        # which names a data file and a line number -- reads exactly like the PR
-        # having broken something. It has a live trigger: `master` currently
-        # carries a real missing comma in data/json/items/tool/electronics.json,
-        # and CDDA's own JSON reader tolerates it while Python's json does not,
-        # so it is invisible to the game and to json_formatter. A PR that FIXES
+        # Attribute a failure HERE to the base, explicitly. This step runs code the
+        # PR did not write, so a bare traceback naming a data file and line reads
+        # exactly like the PR broke something. LIVE TRIGGER: `master` carries a
+        # real missing comma in data/json/items/tool/electronics.json (verified
+        # 2026-08-23, python json fails at line 176) -- CDDA's own reader tolerates
+        # it, so it is invisible to the game and to json_formatter. A PR that FIXES
         # such a file still fails here, because the base is generated first.
         if ! ./lang/update_pot.sh; then
           echo "" >&2
@@ -262,33 +251,28 @@ jobs:
         empty.save(os.path.join(os.environ["RUNNER_TEMP"], "base.pot"))
         PY
 
-    # WARN ONLY -- the job stays green no matter what this finds. That is a
-    # measured decision, not a soft one.
+    # WARN ONLY -- green no matter what this finds. A measured decision.
     #
-    # The whole-tree audit on this tree reports 1,833 strings, and sampling the
-    # top of that list finds essentially no typos: it is Exodii NPC dialect
-    # (kennit, yarkin, this'n), Xedra Evolved and MindOverMatter invented
-    # vocabulary (stormwrought, shadowstuff), core nether lore (quadraphract),
-    # deliberately mis-spelled children's notes, and the FN Five-seveN, which is
-    # the actual product name. All correct by design. Failing on non-empty output
-    # would therefore gate PRs on content that is right, and it would do it
-    # hardest on dialogue and mods -- the files this fork edits most.
+    # The whole-tree audit reports 1,833 strings, and sampling the top finds
+    # essentially no typos: Exodii NPC dialect (kennit, yarkin, this'n), Xedra
+    # Evolved and MindOverMatter invented vocabulary (stormwrought, shadowstuff),
+    # nether lore (quadraphract), deliberately mis-spelled children's notes, and
+    # the FN Five-seveN, an actual product name. All correct by design. Failing on
+    # non-empty output would gate PRs on content that is right, hardest on
+    # dialogue and mods -- the files this fork edits most.
     #
-    # Upstream did not fail either: it uploaded the output as an artifact for
-    # post-spell-check-result.yml to post as a PR comment, and that comment says
-    # in its own words "you can simply disregard if this is inaccurate". This is
-    # the same advisory, delivered to the log instead, because the artifact relay
-    # and its consumer are both dropped (CDDA_CI_PLAN.md 2.4).
+    # Upstream did not fail either: it uploaded the output for
+    # post-spell-check-result.yml to post as a PR comment, which says in its own
+    # words "you can simply disregard if this is inaccurate". Same advisory,
+    # delivered to the log, since the artifact relay and its consumer are both
+    # dropped (2.4).
     #
-    # THE EXIT STATUS CANNOT DISTINGUISH "found nothing" FROM "found something",
-    # AND IS NOT USED FOR THAT. spell_check_pr.py exits 0 whether or not it found
-    # anything -- measured: a seeded three-word typo produced 1,650 bytes of
-    # findings at rc 0. Upstream knew, which is why it measured the output's
-    # LENGTH. So emptiness decides whether there are findings, and any future
-    # decision to make this blocking must key on emptiness, not on `set -e`.
-    #
-    # The status is still checked, for the one thing it CAN tell you: whether the
-    # checker ran at all. See the step body.
+    # THE EXIT STATUS CANNOT DISTINGUISH "found nothing" FROM "found something".
+    # spell_check_pr.py exits 0 either way -- measured: a seeded three-word typo
+    # produced 1,650 bytes of findings at rc 0. Upstream knew, which is why it
+    # measured output LENGTH. EMPTINESS decides whether there are findings, so any
+    # future move to blocking must key on that, not on `set -e`. The status is
+    # still checked, for the one thing it CAN tell you: whether the checker ran.
     - name: spell check the changed text
       env:
         MODE: ${{ steps.base.outputs.mode }}
@@ -296,17 +280,15 @@ jobs:
         set -eu
         out="$RUNNER_TEMP/spell_check_output"
 
-        # pot_diff is deliberately run TWICE, as upstream ran it. -j SUPPRESSES
-        # the human-readable listing rather than adding to it, so one call is
-        # what puts the changed strings in the log and the other is what the
-        # spell checker consumes. Not a duplicated line.
+        # pot_diff runs TWICE, as upstream ran it. -j SUPPRESSES the
+        # human-readable listing rather than adding to it, so one call puts the
+        # changed strings in the log and the other feeds the checker. NOT a
+        # duplicated line.
         #
-        # But the listing is gated on diff mode, because in the whole-tree audit
-        # the base is an EMPTY .pot -- so "added" is every message in the game and
-        # the listing measures 18 MB / 221,187 lines, against 301 KB of actual
-        # findings. Sixty times the log for no information: "everything is new" is
-        # not a fact worth printing. On a real pull request it is exactly the
-        # context you want, which is why it is kept there.
+        # The listing is gated on diff mode: in the whole-tree audit the base is
+        # an EMPTY .pot, so "added" is every message in the game -- 18 MB /
+        # 221,187 lines against 301 KB of actual findings. Sixty times the log to
+        # say "everything is new". On a real PR it is exactly the context wanted.
         if [ "${MODE:-}" = "diff" ]; then
           python3 ./tools/pot_diff.py "$RUNNER_TEMP/base.pot" "$RUNNER_TEMP/merge.pot"
         else
@@ -317,20 +299,18 @@ jobs:
         python3 ./tools/pot_diff.py "$RUNNER_TEMP/base.pot" "$RUNNER_TEMP/merge.pot" \
             -j "$RUNNER_TEMP/pot_diff.json"
 
-        # WARN-ONLY APPLIES TO FINDINGS, NOT TO FAILURES. The exit status is
-        # captured rather than discarded, because those are three different
-        # outcomes and only one of them is "clean":
+        # WARN-ONLY APPLIES TO FINDINGS, NOT TO FAILURES. The status is captured,
+        # not discarded, because these are three outcomes and one is not "clean":
         #
         #   rc 0, empty output       -- checked, found nothing
         #   rc 0, non-empty output   -- checked, found something: advisory
         #   rc non-zero              -- DID NOT CHECK
         #
-        # An earlier revision ended this line with `|| true`, and a seeded crash
-        # inside spell_check_pr.py then printed its traceback, produced no output
-        # file, and reported "No unrecognized words in the changed text" on a
-        # green job -- a clean bill of health from a check that never ran. That is
-        # the failure shape CDDA_CI_PLAN.md 11.6 item 7 exists to forbid, so a
-        # non-zero status fails the job even though findings do not.
+        # DO NOT END THIS LINE WITH `|| true`. Measured with a seeded crash in
+        # spell_check_pr.py: traceback printed, no output file, and the job
+        # reported "No unrecognized words in the changed text" and went green -- a
+        # clean bill of health from a check that never ran. That is the shape
+        # 11.6 item 7 forbids, so a non-zero status fails the job; findings do not.
         status=0
         python3 ./tools/spell_check_pr.py -i "$RUNNER_TEMP/pot_diff.json" > "$out" || status=$?
 

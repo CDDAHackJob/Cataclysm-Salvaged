@@ -771,7 +771,13 @@ ifeq ($(TILES), 1)
       # These differ depending on what SDL2 is configured to use.
       ifneq (,$(findstring mingw32,$(CROSS)))
         # We use pkg-config to find out which libs are needed with MXE
-        LDFLAGS += $(shell $(PKG_CONFIG) --libs SDL2_image SDL2_ttf)
+        #
+        # STATIC=1 must select --static --libs here to ensure everything is named.
+        ifeq ($(STATIC), 1)
+          LDFLAGS += $(shell $(PKG_CONFIG) --static --libs SDL2_image SDL2_ttf)
+        else
+          LDFLAGS += $(shell $(PKG_CONFIG) --libs SDL2_image SDL2_ttf)
+        endif
         # We don't use SDL_main -- we have proper main()/WinMain()
         LDFLAGS := $(filter-out -lSDL2main,$(LDFLAGS))
       else

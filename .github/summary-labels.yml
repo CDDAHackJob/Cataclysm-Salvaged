@@ -1,18 +1,16 @@
-# Consumed by .github/workflows/summary-labeler.yml via fuxingloh/multi-labeler,
-# which compiles each `body` value with `new RegExp(value)` -- JAVASCRIPT, no
-# flags, and no try/catch around it.
+# Read by summary-labeler.yml via multi-labeler, which compiles each `body` with
+# `new RegExp(value)` -- JAVASCRIPT, no flags, no try/catch.
 #
-# SO DO NOT USE INLINE FLAG GROUPS HERE. `(?i:Content)` and `(?i)Content` are
-# valid Python and throw `Invalid group` in JS, and because the compile is
-# unguarded that failure takes down the WHOLE action, not just the rule holding
-# it. This is a live hazard rather than a hypothetical: tools/generate_changelog.py
-# parses the very same `#### Summary` line and uses `(?i:...)` throughout, so the
-# idiom is one copy-paste away. Use a character class -- `[Cc]ontent` -- if a
-# pattern ever needs to be case-tolerant.
+# NO INLINE FLAG GROUPS. `(?i:Content)` and `(?i)Content` are valid Python and
+# throw `Invalid group` in JS, and the unguarded compile takes down the WHOLE
+# action, not just the rule holding it. Live hazard, not hypothetical:
+# tools/generate_changelog.py parses the same `#### Summary` line and uses
+# `(?i:...)` throughout, so the idiom is one copy-paste away. Use a character
+# class -- `[Cc]ontent` -- for case tolerance.
 #
-# Note the two consumers of that line already differ on case: the changelog
-# upper-cases the category before validating it, so `content "..."` is accepted
-# there while matching nothing here (CDDA_CI_PLAN.md 2.6a).
+# The two consumers already differ on case: the changelog upper-cases the
+# category before validating, so `content "..."` is accepted there and matches
+# nothing here (2.6a).
 version: v1
 
 labels:
@@ -20,14 +18,13 @@ labels:
     matcher:
       body: "(\\s|^)#### Summary\\s*Features +\".+\"\\s*(\n|$)"
 
-  # Content was the one changelog category with no label. The PR template and
-  # tools/generate_changelog.py both define 11 -- Content, Features, Interface,
-  # Mods, Balance, I18N, Bugfixes, Performance, Build, Infrastructure, None --
-  # and this file covered 9. None is correctly absent (it means "no changelog
-  # entry"); Content was simply missing, so a PR declaring it got no label at
-  # all. Angle brackets follow the convention the other change-KIND labels use
-  # here (<Bugfix>, <Enhancement / Feature>), as distinct from the area labels
-  # in .github/labeler.yml.
+  # ADDED. Content was the one changelog category with no label. The PR template
+  # and generate_changelog.py both define 11 (Content, Features, Interface, Mods,
+  # Balance, I18N, Bugfixes, Performance, Build, Infrastructure, None) and this
+  # file covered 9. None is correctly absent -- it means "no changelog entry" --
+  # but Content was simply missing, so a PR declaring it got no label at all.
+  # Angle brackets match the other change-KIND labels here, as distinct from the
+  # area labels in .github/labeler.yml.
   - label: "<Content>"
     matcher:
       body: "(\\s|^)#### Summary\\s*Content +\".+\"\\s*(\n|$)"
@@ -48,12 +45,11 @@ labels:
     matcher:
       body: "(\\s|^)#### Summary\\s*Bugfixes +\".+\"\\s*(\n|$)"
 
-  # Digit range widened from [1-9][0-9]{3,8} to [1-9][0-9]*. Upstream's version
-  # required FOUR to nine digits, which fits CleverRaven's five-digit issue
-  # numbers and cannot fire on a fresh repository at all -- "Fixes #5" did not
-  # match, and neither did anything below #1000. It failed silently, looking
-  # exactly like a PR that referenced no issue. Now any issue from #1 upward
-  # matches, while #0 and bare text still do not.
+  # Digit range widened, [1-9][0-9]{3,8} -> [1-9][0-9]*. Upstream required FOUR
+  # to nine digits, fitting CleverRaven's five-digit issue numbers but unable to
+  # fire on a fresh repo at all: "Fixes #5" did not match, nor anything below
+  # #1000. It failed SILENTLY, looking exactly like a PR referencing no issue.
+  # Now #1 upward matches; #0 and bare text still do not.
   - label: "<Bugfix>"
     matcher:
       body: ".*((C|c)lose(s|d)?|(F|f)ix(es|ed)?|(R|r)esolve(s|d)?):?.*#([1-9][0-9]*).*"

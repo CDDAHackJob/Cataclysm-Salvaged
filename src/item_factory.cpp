@@ -979,13 +979,27 @@ void Item_factory::finalize_post_armor( itype &obj )
                         it.cover_ranged += sub_armor.cover_ranged * scale;
                         it.cover_vitals += sub_armor.cover_vitals;
 
-                        // these values need to be averaged based on proportion covered
-                        it.avg_thickness = ( sub_armor.avg_thickness * scale + it.avg_thickness * it_scale ) /
-                                           ( scale + it_scale );
-                        it.env_resist = ( sub_armor.env_resist * scale + it.env_resist * it_scale ) /
-                                        ( scale + it_scale );
-                        it.env_resist_w_filter = ( sub_armor.env_resist_w_filter * scale + it.env_resist_w_filter *
-                                                   it_scale ) / ( scale + it_scale );
+                        // these values need to be averaged based on proportion covered.
+                        //
+                        // Guard against 0 total weight:
+                        // Some items have 0 coverage and no "specifically covers" sublocation for bp,
+                        // and could cause these calculations to compute 0.0/0.0,
+                        // causing multiple fields to quietly become NaN,
+                        // or cause other issues as it tries to convert NaN to int.
+                        // This includes avg_thickness (float) and env_resist (int).
+                        // Can cause obscure issues unless testing for it the right way.
+                        // Wrapping in a simple IF statement covers the possibility.
+                        // No epsilon is needed -- max_coverage() returns an int, so each
+                        // scale is exactly 0.0 or at least 0.01.
+                        const float total_scale = scale + it_scale;
+                        if( total_scale > 0.0f ) {
+                            it.avg_thickness = ( sub_armor.avg_thickness * scale + it.avg_thickness *
+                                                 it_scale ) / total_scale;
+                            it.env_resist = ( sub_armor.env_resist * scale + it.env_resist * it_scale ) /
+                                            total_scale;
+                            it.env_resist_w_filter = ( sub_armor.env_resist_w_filter * scale +
+                                                       it.env_resist_w_filter * it_scale ) / total_scale;
+                        }
 
                         // add layers that are covered by sublimbs
                         for( const layer_level &ll : sub_armor.layers ) {

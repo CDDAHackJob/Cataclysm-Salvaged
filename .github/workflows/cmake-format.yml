@@ -1,17 +1,26 @@
 name: cmake-format linting
 
-# The paths filter is the lint list, spelled out. No globs at all, deliberately:
-# upstream's '**.cmake' and '**.cmake.in' do not mean here what they mean on
-# GitHub -- Forgejo matches with doublestar, where '**' is recursive only as a
-# whole path component and otherwise degrades to a single '*'. '**.cmake' there-
-# fore matched nothing (no .cmake file sits at the repository root), and
-# '**.cmake.in' matched exactly one file by luck. Neither mattered, because no
-# .cmake file is linted at all -- fixing them to '**/*.cmake' would only start
-# jobs that come back green having inspected none of the 17 files that changed.
+# HackJob's Summary:
+# Workflow rebuilt and tested extensively with Claude Opus.
+# Its comments are condensed into "caveman" claude and may be a bit confusing.
+# Some sections will be referring to items within a plan document not in the repo.
+# These are notes for myself and Claude.
+# To summarize the rewrite, we pinned the version and minimized relying on external sources.
+# We cleaned up some unused legacy lists from older versions, fixed a filter bug,
+# And tightened it to scan a some other older files for the future.
+# ~HackJob
 #
-# Naming the linted files instead makes the filter exact, and the list it has to
-# agree with is fifteen lines below in this same file, so the two cannot
-# silently diverge.
+# The paths filter IS the lint list, spelled out -- no globs, deliberately.
+# Upstream's '**.cmake' and '**.cmake.in' do not mean here what they mean on
+# GitHub: Forgejo matches with doublestar, where '**' is recursive only as a
+# whole path component and otherwise degrades to '*'. So '**.cmake' matched
+# nothing (no .cmake sits at the repo root) and '**.cmake.in' matched one file by
+# luck. Neither mattered, because no .cmake file is linted at all -- fixing them
+# to '**/*.cmake' would only start jobs coming back green having inspected none
+# of the 17 files that changed.
+#
+# Naming the files makes the filter exact, and the list it must agree with is
+# fifteen lines below in this same file, so the two cannot silently diverge.
 on:
   workflow_dispatch:
   pull_request:
@@ -50,16 +59,15 @@ jobs:
       with:
         persist-credentials: false
 
-    # cmakelang and PyYAML are baked into the runner image at pinned versions,
-    # replacing upstream's `pip install -U cmakelang`. That install was unpinned
-    # and, on this image, insufficient: cmakelang reads .cmake-format.yml by
-    # trying yaml then json then python, and PyYAML is a dependency it does not
-    # declare. Without it the job dies with rc 2 and an internal-error traceback
-    # before linting anything.
+    # cmakelang and PyYAML are baked at pinned versions, replacing upstream's
+    # `pip install -U cmakelang` -- unpinned, and on this image insufficient:
+    # cmakelang reads .cmake-format.yml by trying yaml then json then python, and
+    # PyYAML is a dependency it does not declare. Without it the job dies at rc 2
+    # with an internal-error traceback before linting anything.
     #
-    # The PyYAML import is asserted, not just the version. A cmakelang that
-    # cannot read its own config is the failure this guards against, and it does
-    # not present as a version problem.
+    # The PyYAML IMPORT is asserted, not just the version. A cmakelang that cannot
+    # read its own config is the failure guarded against, and it does not present
+    # as a version problem.
     - name: verify cmakelang
       run: |
         ver=$( python3 -c 'import cmakelang; print(cmakelang.__version__)' 2>&1 || true )

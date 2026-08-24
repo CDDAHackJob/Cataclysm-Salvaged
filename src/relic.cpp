@@ -606,7 +606,12 @@ int relic_procgen_data::power_level( const enchant_cache &ench ) const
     for( const weighted_object<int, relic_procgen_data::enchantment_value_passive<int>>
          &add_val_passive : passive_add_procgen_values ) {
         int val = ench.get_value_add( add_val_passive.obj.type );
-        if( val != 0 ) {
+        // Enforcement of "THIS CANNOT BE 0".
+        // One of the json readers named flexbuffer can turn 0.x into 0 and feed it in.
+        // That causes problems as the float turns into inf and then trys to turn into an int from +=,
+        // triggering an undefined behavior alarm.
+        // Need to investigate the reader later. For now we skip 0s.
+        if( val != 0 && add_val_passive.obj.increment != 0 ) {
             power += static_cast<float>( add_val_passive.obj.power_per_increment ) /
                      static_cast<float>( add_val_passive.obj.increment ) * val;
         }
@@ -615,7 +620,9 @@ int relic_procgen_data::power_level( const enchant_cache &ench ) const
     for( const weighted_object<int, relic_procgen_data::enchantment_value_passive<float>>
          &mult_val_passive : passive_mult_procgen_values ) {
         float val = ench.get_value_multiply( mult_val_passive.obj.type );
-        if( val != 0.0f ) {
+        // Same potential problem as above, but testing isn't warning because no JSON objects trip it for now.
+        // Same guard, just in case.
+        if( val != 0.0f && mult_val_passive.obj.increment != 0.0f ) {
             power += mult_val_passive.obj.power_per_increment / mult_val_passive.obj.increment * val;
         }
     }

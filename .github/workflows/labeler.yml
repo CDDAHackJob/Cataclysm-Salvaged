@@ -1,31 +1,34 @@
 name: "Pull Request Labeler"
 
+# HackJob's Summary:
+# Workflow rebuilt and tested extensively with Claude Opus.
+# Its comments are condensed into "caveman" claude and may be a bit confusing.
+# Some sections will be referring to items within a plan document not in the repo.
+# These are notes for myself and Claude.
+# To summarize the rewrite, we pinned the version and minimized relying on external sources.
+# Altered how mods were labeled as well.
+# ~HackJob
+#
 # Its rule set lives at .github/labeler.yml -- that path is the action's default
 # `configuration-path`, so it is fixed, not a convention.
 #
-# WHAT THIS IS FOR HERE, which is not what it is for upstream. Upstream gets one
-# pull request per focused change, so a label means "this change touched mapgen".
-# In this fork ordinary work is built and tested on the laptop and pushed
-# straight to `experimental` with no pull request; PRs exist almost solely for
-# `experimental` -> `master`, which is the release. So a label here means
-# "this RELEASE touched mapgen" (CDDA_CI_PLAN.md 2.5). Judge the label set by
-# whether it usefully describes a release, not whether it pinpoints one change.
+# DIFFERENT PURPOSE HERE THAN UPSTREAM. Upstream gets one PR per focused change,
+# so a label means "this change touched mapgen". Here, work goes straight to
+# `experimental` with no PR and PRs exist almost solely for experimental ->
+# master, the release. So a label means "this RELEASE touched mapgen" (2.5).
+# Judge the label set on whether it describes a release, not one change.
 #
-# The 64 labels in the config must ALREADY EXIST in Forgejo. actions/labeler
-# applies labels; it does not create them.
+# The 64 labels must ALREADY EXIST in Forgejo. actions/labeler applies; it does
+# not create.
 
 on:
-  # No paths: filter, and that is not an oversight. Not every file matches a rule
-  # -- 206 of 8,938 match none, mostly android/, msvc-full-features/ and
-  # dotfiles -- so a PR can legitimately come back unlabelled, and that is the
-  # correct outcome rather than something to filter for. A paths: list here would
-  # have to mirror all 64 rules to avoid suppressing a PR that does match, and
-  # the two copies would drift. Let the config decide; this trigger just supplies
-  # the pull requests.
+  # No paths: filter, deliberately. 206 of 8,938 files match no rule (android/,
+  # msvc-full-features/, dotfiles), so an unlabelled PR is a correct outcome, not
+  # something to filter for. A paths: list would have to mirror all 64 rules and
+  # the two copies would drift. Let the config decide.
   #
-  # No workflow_dispatch either: this needs a pull request for its context, so a
-  # Run button would be a control that cannot work. A trigger with nothing to act
-  # on is worse than an absent one (CDDA_CI_PLAN.md 11.5g).
+  # No workflow_dispatch either: this needs a PR for its context, so a Run button
+  # would be a control that cannot work (11.5g).
   - pull_request_target
 
 concurrency:
@@ -46,92 +49,75 @@ jobs:
     runs-on: cdda-ci
 
     # NOT one API call -- the changed-file list is PAGINATED
-    # (`client.paginate(pulls.listFiles)`), so cost scales with the size of the
-    # pull request, roughly one request per 100 files. That is nothing for a
-    # normal PR and non-trivial for a release aggregating months of work, which
-    # is the only kind this repository opens. 10 minutes is headroom for that
-    # paging plus a slow forge, not a description of the work.
+    # (`client.paginate(pulls.listFiles)`), ~1 request per 100 files. Nothing for
+    # a normal PR, non-trivial for a release aggregating months of work, which is
+    # the only kind this repo opens. 10 min is headroom for paging plus a slow
+    # forge, not the work.
     #
-    # Worth knowing for the same reason: if the forge caps how many files it will
-    # report for one pull request, the list arrives TRUNCATED and labels are
-    # computed from a partial view -- silently, since a short list looks like a
-    # small PR. Forgejo's limit, if any, is unmeasured. If a large release ever
-    # comes back with visibly too few labels, suspect this before the config.
+    # And if the forge caps files-per-PR, the list arrives TRUNCATED and labels
+    # come from a partial view -- silently, since a short list looks like a small
+    # PR. Forgejo's limit, if any, is unmeasured. A large release with visibly too
+    # few labels: suspect this before the config.
     timeout-minutes: 10
 
     steps:
-      # PINNED BY SHA, AND THE PIN IS PROTECTING A SCHEMA, NOT JUST A VERSION.
-      # This SHA is v4.3.0. actions/labeler@v5 rewrote the config format --
-      # v4 reads `label: [globs]`, v5 requires `changed-files:` /
-      # `any-glob-to-any-file:` wrappers -- so drifting from v4 to v5 would not
-      # error, it would silently stop matching all 64 rules and label nothing.
-      # `@v4` would not protect against that either: it is a moving major tag,
-      # today pointing at this same commit, free to move tomorrow.
+      # THE SHA PIN PROTECTS A SCHEMA, NOT JUST A VERSION. This is v4.3.0.
+      # labeler@v5 rewrote the config format -- v4 reads `label: [globs]`, v5
+      # needs `changed-files:` / `any-glob-to-any-file:` wrappers -- so drifting
+      # v4 -> v5 would not error, it would silently match none of the 64 rules
+      # and label nothing. `@v4` is a moving major tag and protects nothing.
       #
-      # THE ABSOLUTE URL IS LOAD-BEARING. A bare `actions/labeler@<sha>` does not
-      # mean github.com here: the runner resolves unqualified `uses:` against
-      # code.forgejo.org, which mirrors a small curated set. checkout and
-      # upload-artifact are there; **actions/labeler is NOT** -- measured, and it
-      # is the counter-example proving "actions/* resolve" is not a rule
-      # (CDDA_CI_PLAN.md 11.5e). Written bare, this job fails at resolution.
+      # THE ABSOLUTE URL IS LOAD-BEARING. An unqualified `uses:` resolves against
+      # code.forgejo.org, which mirrors a small curated set: checkout and
+      # upload-artifact are there, **actions/labeler is NOT** -- measured, and the
+      # counter-example proving "actions/* resolve" is not a rule (11.5e).
+      # Written bare, this job fails at resolution.
       #
-      # `pull_request_target` IS SAFE IN THIS FILE, and the distinction is worth
-      # stating because linter.yml was dropped partly for using it (2.0). That
-      # trigger is dangerous when a job CHECKS OUT PULL REQUEST CODE, because the
-      # code then runs with a write token against the base repository. There is
-      # no checkout step here at all: actions/labeler reads the changed-file list
-      # from the API and applies labels. No pull-request code executes. The
-      # trigger is used rather than `pull_request` so labelling still works if a
-      # PR ever arrives from a fork, where the token would otherwise be read-only.
+      # `pull_request_target` IS SAFE HERE, worth stating because linter.yml was
+      # dropped partly for using it (2.0). It is dangerous when a job CHECKS OUT
+      # PR CODE, which then runs with a write token against the base repo. There
+      # is NO checkout step here -- labeler reads the file list from the API and
+      # applies labels, so no PR code executes. Used over `pull_request` so
+      # labelling still works on a fork PR, where the token would be read-only.
       #
-      # STILL UNVERIFIED, and only a real PR can settle it: whether Forgejo's
-      # issues/labels API answers what actions/labeler calls. That is wave C,
-      # shared with summary-labeler. Note the two hit the labels API while
-      # linter's reviewdog used the REVIEWS API -- separate surfaces that can
-      # fail independently, so a green result here would not have proven
-      # reviewdog anything.
+      # UNVERIFIED, and only a real PR settles it: whether Forgejo's issues/labels
+      # API answers what labeler calls. Wave C, shared with summary-labeler. Both
+      # hit the LABELS API where linter's reviewdog used the REVIEWS API --
+      # separate surfaces, so a green result here proves reviewdog nothing.
       - uses: https://github.com/actions/labeler@ac9175f8a1f3625fd0d4fb234536d26811351594 # v4.3.0
         with:
-          # repo-token IS DELIBERATELY NOT PASSED, where upstream passes
-          # "${{ secrets.GITHUB_TOKEN }}". action.yml already defaults it to
-          # `${{ github.token }}`, and that default applies only when the input
-          # is ABSENT -- an input supplied as an empty string stays empty and
-          # wins. So naming a secret that this forge might not populate is
-          # strictly worse than naming none: it converts "fall back to the job
-          # token" into "run with no token".
+          # repo-token DELIBERATELY NOT PASSED, where upstream passes
+          # "${{ secrets.GITHUB_TOKEN }}". action.yml defaults it to
+          # `${{ github.token }}`, and that default applies only when the input is
+          # ABSENT -- supplied-but-empty stays empty and wins. So naming a secret
+          # this forge might not populate is worse than naming none: it turns
+          # "fall back to the job token" into "run with no token".
           #
-          # Which of the two Forgejo actually fills is UNMEASURED. Both
-          # GITHUB_TOKEN and GITEA_TOKEN appear in the forgejo and
-          # forgejo-runner binaries, so the compatibility layer clearly knows
-          # them, but `forgejo-runner exec` mints no token at all -- both
-          # `secrets.GITHUB_TOKEN` and `github.token` come back empty locally --
-          # so the local harness cannot answer this. Only a real run can, and
-          # that is wave C along with the label API itself.
-          # SET EXPLICITLY BECAUSE THE CONFIG'S CORRECTNESS DEPENDS ON IT.
-          # false is already the action's default, so this changes no behaviour
-          # today -- it makes an invisible dependency visible. Nearly every rule
-          # in .github/labeler.yml is `**/`-prefixed, and with dot false those
-          # cannot traverse a dot-leading directory, which is the only reason
-          # content labels do not fire on .github/ churn. `.github/**` still
-          # matches for Code: Tooling because its dot is written literally.
-          # Flip this to true and rules like `**/**spell**` immediately start
-          # catching post-spell-check-result.yml (measured against real
-          # minimatch). Do not, without re-auditing the config first
-          # (CDDA_CI_PLAN.md 2.5a).
+          # Which one Forgejo fills is UNMEASURED. Both GITHUB_TOKEN and
+          # GITEA_TOKEN appear in the forgejo binaries, but `forgejo-runner exec`
+          # mints no token at all -- both come back empty locally -- so the local
+          # harness cannot answer it. Wave C, with the label API.
+
+          # `dot` IS SET EXPLICITLY BECAUSE THE CONFIG'S CORRECTNESS DEPENDS ON IT.
+          # false is already the default, so this changes nothing today -- it makes
+          # an invisible dependency visible. Nearly every rule is `**/`-prefixed,
+          # and with dot false those cannot traverse a dot-leading directory, which
+          # is the only reason content labels do not fire on .github/ churn.
+          # `.github/**` still matches Code: Tooling because its dot is literal.
+          # Flip to true and `**/**spell**` starts catching
+          # post-spell-check-result.yml (measured against real minimatch). Do not,
+          # without re-auditing the config (2.5a).
           dot: false
-          # Upstream's comment was "I don't want no bot removing stuff for me",
-          # and the intent is preserved deliberately. Labels are only ever ADDED:
-          # one applied to a release PR stays applied even if later commits stop
-          # matching its rule. For a release-scale PR that is what is wanted --
-          # the label records that the release touched an area at some point,
-          # which is exactly the summary this workflow exists to produce.
+          # Upstream's intent, preserved: "I don't want no bot removing stuff for
+          # me". Labels are only ever ADDED -- one applied to a release PR stays
+          # even if later commits stop matching its rule, which is what a release
+          # summary wants.
           #
           # THE EMPTY STRING IS NOT A TYPO, AND `false` WOULD MEAN THE OPPOSITE.
-          # This input is read as `!!core.getInput('sync-labels')` -- a plain
-          # string coerced to boolean, not a parsed boolean. "" is falsy, so it
-          # disables syncing. Writing `sync-labels: false` yields the STRING
-          # "false", which is truthy, silently turning label removal ON. Note
-          # `dot` above is the opposite case -- getBooleanInput, which is strict
-          # -- so the two inputs on this same step disagree about how to spell a
-          # boolean. Copy neither onto the other.
+          # Read as `!!core.getInput('sync-labels')` -- string coerced to boolean,
+          # not parsed. "" is falsy, so syncing is off. `sync-labels: false` yields
+          # the STRING "false", which is TRUTHY, silently turning label removal ON.
+          # `dot` above is getBooleanInput, which is strict -- so the two inputs on
+          # this one step disagree about how to spell a boolean. Copy neither onto
+          # the other.
           sync-labels: ""

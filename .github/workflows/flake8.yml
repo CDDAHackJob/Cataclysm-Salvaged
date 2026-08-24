@@ -1,5 +1,13 @@
 name: Flake8 Python linting
 
+# HackJob's Summary:
+# Workflow rebuilt and tested extensively with Claude Opus.
+# Its comments are condensed into "caveman" claude and may be a bit confusing.
+# Some sections will be referring to items within a plan document not in the repo.
+# These are notes for myself and Claude.
+# To summarize the rewrite, we pinned the version and minimized relying on external sources.
+# ~HackJob
+
 on:
   workflow_dispatch:
   pull_request:
@@ -36,16 +44,15 @@ jobs:
       with:
         persist-credentials: false
 
-    # flake8's verdict is version-dependent and nothing in the tree pins it --
+    # flake8's verdict is VERSION-DEPENDENT and nothing in the tree pins it --
     # there is no Python equivalent of doc/CODE_STYLE.md. Measured 2026-08-14:
-    # this tree is CLEAN under flake8 3.9.2 and 4.0.1 and reports 8 violations
-    # under 5.0.4, because pycodestyle 2.9 widened E275 and 2.10 changed how
-    # E501 counts physical lines inside docstrings. The tree was fixed against
-    # 5.0.4, so that is the version this check is defined against.
+    # clean under 3.9.2 and 4.0.1, 8 violations under 5.0.4, because pycodestyle
+    # 2.9 widened E275 and 2.10 changed how E501 counts physical lines inside
+    # docstrings. The tree was fixed against 5.0.4, so that is the definition.
     #
-    # pycodestyle is checked too, and is the load-bearing half: the checks live
-    # there rather than in flake8, and Debian pairs flake8 5.0.4 with
-    # pycodestyle 2.10.0 rather than upstream's own pin.
+    # pycodestyle is checked too and is the LOAD-BEARING half -- the checks live
+    # there, not in flake8, and Debian pairs 5.0.4 with pycodestyle 2.10.0 rather
+    # than upstream's own pin.
     - name: verify flake8 version
       run: |
         ver=$( flake8 --version 2>&1 | tr '\n' ' ' || true )

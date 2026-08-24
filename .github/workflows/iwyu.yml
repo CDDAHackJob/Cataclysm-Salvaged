@@ -1,42 +1,27 @@
 name: include-what-you-use
 
-# Header hygiene: which #includes are unused, and which symbols are arriving
-# transitively instead of being included directly. Neither is findable by grep --
-# both need a compiler front end to know where every declaration came from.
+# HackJob's Summary:
+# Workflow rebuilt and tested extensively with Claude Opus.
+# Its comments are condensed into "caveman" claude and may be a bit confusing.
+# Some sections will be referring to items within a plan document not in the repo.
+# These are notes for myself and Claude.
+# To summarize the rewrite, we upgraded to clang 21 from 17 and minimized relying on external sources.
+# Ran it a number of times to estimate how long it takes to run and iron out some issues.
+# Ran into some problems and put notes in for if I come back to this and use Claude again.
+# More realistically, the only thing that should need editing is the SHA pin and the clang notes.
+# There is a note about clang 17 because I am in the process of fixing minor issues
+# so that we can fully upgrade all relevant workflows to clang 21, and clang-tidy is the only holdout.
+# ~HackJob
 #
-# REBUILT RATHER THAN RETARGETED. Upstream's version was written for a newer
-# CDDA than this fork's 2024 base -- it and build-scripts/ci-iwyu-run.py were
-# lifted from the superseded trunk during the rebuild and have never run against
-# this codebase (CDDA_CI_PLAN.md 2.1). Since the interest is in what it DOES
-# rather than in preserving it, the expensive parts were measured and dropped:
+# Unused #includes, and symbols arriving transitively. Needs a front end, not grep.
+# Rebuilt, not retargeted (CDDA_CI_PLAN.md 2.1): upstream's version targets a
+# newer CDDA and never ran here. 197 s end to end, measured five times.
 #
-#   upstream                                    here
-#   ----------------------------------------    --------------------------------
-#   add apt.llvm.org repo (absent entirely)     shared with clang-tidy (row 11)
-#   `make includes` over ~900 sources           gone -- a dispatch-only run has
-#     to build an include graph                   no diff to scope BY, so the
-#                                                 include graph has nothing to
-#                                                 answer (see below)
-#   get_affected_files.py                       gone
-#   242-line ci-iwyu-run.py orchestrator        ~6 lines below
-#   PR gate                                     workflow_dispatch, advisory
-#
-# Measured on this tree: LLVM 17 install 6 s, IWYU build 25 s, cmake configure
-# 2 s. END TO END 197 s, and reproducibly so -- four whole-tree runs measured
-# 197, 197, 198, 197 seconds under --cpuset-cpus=0-15. The IWYU source build was
-# assumed to be the costly step and is not; it is 25 s of that 197.
-#
-# NOTE THE CONFIGURATION THIS ANALYSES: TILES=0 SOUND=0 LOCALIZE=0. IWYU sees one
-# preprocessor configuration and cannot reason about the others, which is the
-# single most important caveat when acting on its output -- see "WHAT NOT TO
-# TOUCH" at the report step.
+# ANALYSES ONE CONFIG: TILES=0 SOUND=0 LOCALIZE=0. Cannot reason about the
+# others -- the caveat that matters when acting on output. See "WHAT NOT TO TOUCH".
 on:
-  # Dispatch only, and no paths: filter -- not an omission. A paths: block is
-  # ACCEPTED by the schema under workflow_dispatch but has nothing to filter,
-  # since a manual run has no changed-file set (measured, CDDA_CI_PLAN.md 11.5g).
-  # It would sit there looking like a working filter. Include hygiene also rots
-  # too slowly to gate a pull request on, and every file has findings, so there
-  # is no red/green to gate with.
+  # No paths: filter. A paths: block is ACCEPTED under workflow_dispatch but has
+  # nothing to filter (11.5g) -- it would look like a working filter and be inert.
   workflow_dispatch:
 
 concurrency:
@@ -50,7 +35,7 @@ jobs:
   iwyu:
     runs-on: cdda-ci
 
-    # 197 s measured, four times, within a second of each other. The bound caps
+    # 197 s measured, five times, within a second of each other. The bound caps
     # a hang; it is not an estimate of the work.
     timeout-minutes: 30
 
@@ -59,93 +44,65 @@ jobs:
       with:
         persist-credentials: false
 
-    # LLVM 17, not 19. Upstream built IWYU against 19; 17 is what clang-tidy.yml
-    # (row 11) needs, so the two share one apt source rather than pulling two
-    # LLVM toolchains onto the same box. IWYU must match its clang exactly -- the
-    # clang_17 branch goes with llvm-17 and nothing else.
-    #
-    # `signed-by` keyring, not `apt-key add`: that command is deprecated and
-    # removed in newer Debian, and upstream's repo line points at `jammy`
-    # (Ubuntu 22.04) which does not exist for this base image. Measured working
-    # at 6 s.
-    - name: install LLVM 17
+    # LLVM 21 (was 17). IWYU must match its clang exactly: clang_21 branch goes
+    # with llvm-21, nothing else. clang-tidy stays on 17 -- bumping a GATE
+    # surfaces 746 findings (CDDA_TOOLCHAIN_PLAN.md step 5); this job is advisory.
+    # No apt-get: LLVM 21 is baked (11.4f). Assert it -- absence otherwise
+    # surfaces as a confusing cmake error several steps on.
+    - name: verify LLVM 21 is present
       run: |
         set -eu
-        # Fetched to a file first rather than piped straight into gpg. Under
-        # `set -e` without pipefail a pipeline reports only the LAST command, so
-        # `wget ... | gpg --dearmor` would write an empty keyring on a failed
-        # download and carry on -- surfacing later as an opaque apt signature
-        # error instead of "the key did not download". Same shape as the
-        # pipelines corrected in CBA.yml and labeler.yml.
-        wget -qO "$RUNNER_TEMP/llvm.key" https://apt.llvm.org/llvm-snapshot.gpg.key
-        gpg --dearmor < "$RUNNER_TEMP/llvm.key" > /usr/share/keyrings/llvm.gpg
-        echo "deb [signed-by=/usr/share/keyrings/llvm.gpg] \
-        http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-17 main" \
-          > /etc/apt/sources.list.d/llvm.list
-        apt-get update
-        apt-get install -y --no-install-recommends llvm-17-dev clang-17 libclang-17-dev
+        command -v clang++-21 >/dev/null || {
+          echo "clang++-21 missing -- expected it baked into the runner image" >&2
+          exit 1
+        }
+        [ -d /usr/lib/llvm-21 ] || {
+          echo "/usr/lib/llvm-21 missing -- IWYU's CMAKE_PREFIX_PATH would not resolve" >&2
+          exit 1
+        }
+        clang++-21 --version | head -1
 
-    # Built from source because no distro ships an IWYU matching LLVM 17.
-    # Bookworm packages IWYU 0.18 against clang 14, which DOES work and needs no
-    # repo at all -- it was measured and rejected on output quality, not cost:
-    # 0.18 emitted 34 libstdc++-internal suggestions across 32 files where 0.21
-    # emits 8. Its default mappings are simply older than this tree expects.
+    # Source build: no distro ships an IWYU matching LLVM 21. Bookworm's 0.18
+    # emits 34 libstdc++-internal suggestions where 0.21 emits 8.
     #
-    # Cloned by the clang_17 branch -- IWYU's convention for "the release
-    # matching this LLVM" -- and then PINNED BY ASSERTION, because a branch is
-    # not a pin. This clones third-party code and executes it against the whole
-    # repository, the same trust decision as any `uses:` ref, and the plan's
-    # fix (2) requires a SHA. git cannot `--branch` a bare SHA on a shallow
-    # clone, so the branch fetches and the commit is checked after -- identical
-    # to the ClangBuildAnalyzer handling in CBA.yml.
-    #
-    # Note the branch has moved past the 0.21 tag (5254247): this commit reports
-    # itself as "0.21 (git:dbecade)". The tag is older and was not the thing
-    # measured, so the branch head is what gets pinned.
-    #
-    # A failure here means upstream patched clang_17. That is worth stopping
-    # for rather than absorbing silently -- the analysis tool changed, so the
-    # report may differ from the last one. Re-verify, then move the SHA.
+    # PINNED BY ASSERTION -- a branch is not a pin, and this runs third-party code
+    # over the whole repo. git cannot `--branch` a bare SHA on a shallow clone, so
+    # fetch the branch, check the commit after. Pin the head, not a tag (tags lag
+    # the clang_NN branches). Failure = upstream patched clang_21: re-verify the
+    # tool before trusting a report, then move the SHA.
     - name: build IWYU
       id: iwyu
       run: |
         set -eu
-        git clone -q --depth 1 --branch clang_17 \
+        git clone -q --depth 1 --branch clang_21 \
           https://github.com/include-what-you-use/include-what-you-use.git "$RUNNER_TEMP/iwyu-src"
 
         got=$( git -C "$RUNNER_TEMP/iwyu-src" rev-parse HEAD )
-        want=dbecade3b575678cc3ccc4dd2d0942e8ff3c7527 # clang_17, reports 0.21
+        want=791e69ea4662cb3e74e8128fd5fd69bd7f4ea6b3 # clang_21 head, 2026-08-22
         [ "$got" = "$want" ] || {
-          echo "IWYU clang_17 has moved: expected $want, got $got." >&2
+          echo "IWYU clang_21 has moved: expected $want, got $got." >&2
           echo "Re-verify the tool before trusting a report from it, then bump the pin." >&2
           exit 1
         }
         cmake -S "$RUNNER_TEMP/iwyu-src" -B "$RUNNER_TEMP/iwyu-build" \
-          -DCMAKE_PREFIX_PATH=/usr/lib/llvm-17 -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_PREFIX_PATH=/usr/lib/llvm-21 -DCMAKE_BUILD_TYPE=Release
         cmake --build "$RUNNER_TEMP/iwyu-build" --parallel "$(nproc)"
         "$RUNNER_TEMP/iwyu-build/bin/include-what-you-use" --version
 
-    # CONFIGURE ONLY -- there is no `cmake --build` here and none is needed.
-    # IWYU wants compile_commands.json, which CMake emits at configure time: 2 s
-    # for 615 entries. Upstream additionally ran `make includes`, which
-    # preprocesses every source with `-H -E` to build an include graph.
+    # CONFIGURE ONLY -- no `cmake --build`, none needed. IWYU wants
+    # compile_commands.json, which CMake emits at configure time: 2 s / 615 entries.
     #
-    # THAT STEP IS DROPPED BECAUSE THIS RUNS ON DISPATCH, NOT BECAUSE IT IS
-    # SLOW. An earlier version of this comment claimed the include graph "cost
-    # more than the scoping saved"; that was asserted, never measured, and is
-    # WRONG -- measured later while sizing clang-tidy, `make includes` builds
-    # 614 .inc files (25.7 MB of header trees) in **7 seconds**. The real reason
-    # is simpler and does not depend on cost: a manually dispatched run has no
-    # changed-file set, so there is nothing for an include graph to answer.
-    # Should this ever gain a pull_request trigger, diff-scoping becomes viable
-    # again at 7 s -- and clang-tidy.yml keeps exactly that machinery for that
-    # reason.
+    # Upstream's `make includes` is dropped because a DISPATCH run has no
+    # changed-file set, so an include graph has nothing to answer -- not because
+    # it is slow (measured: 614 .inc files, 25.7 MB, 7 s). If this ever gains a
+    # pull_request trigger, diff-scoping is viable again at that price;
+    # clang-tidy.yml keeps the machinery for exactly that.
     - name: generate compilation database
       run: |
         set -eu
         cmake -B build \
           -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-          -DCMAKE_CXX_COMPILER=clang++-17 \
+          -DCMAKE_CXX_COMPILER=clang++-21 \
           -DCMAKE_BUILD_TYPE=Release \
           -DTILES=0 -DSOUND=0 -DLOCALIZE=0 \
           .
@@ -157,8 +114,8 @@ jobs:
     # "found nothing" and "did not run" must not look alike.
     #
     # tools/iwyu/cata.imp is the only mapping passed because it is a ref file --
-    # it pulls in gcc.stdlib.imp, vs.stdlib.imp and sdl.imp itself. Passing them
-    # again changes nothing (measured).
+    # it pulls in gcc.stdlib.imp, vs.stdlib.imp and sdl.imp itself.
+    # Passing them again changes nothing (measured).
     - name: run include-what-you-use
       run: |
         set -eu
@@ -175,33 +132,22 @@ jobs:
           exit 1
         fi
 
-        # THE EXIT STATUS MEANS THE OPPOSITE OF WHAT IT LOOKS LIKE, AND IT IS THE
-        # ONLY SIGNAL THAT COVERAGE WAS LOST. Measured on a single invocation:
+        # EXIT STATUS MEANS COVERAGE, NOT FINDINGS. Measured: clean file rc 0,
+        # file WITH findings rc 0, file that cannot compile rc 1, missing file
+        # rc 1. iwyu_tool.py aggregates `max(exit_code, returncode)`, so non-zero
+        # = at least one TU failed to ANALYSE.
         #
-        #   clean file            rc 0
-        #   file WITH findings    rc 0     <- findings do NOT raise it
-        #   file that cannot compile   rc 1
-        #   nonexistent file           rc 1
-        #
-        # iwyu_tool.py aggregates with `exit_code = max(exit_code, returncode)`,
-        # so a non-zero status means AT LEAST ONE translation unit failed to
-        # analyse -- not that suggestions exist. Ignoring it would let a run that
-        # silently skipped files look identical to a complete one, which is the
-        # failure shape CDDA_CI_PLAN.md 11.6 item 7 forbids. (This is the mirror
-        # of spell_check_pr.py, which exits 0 whether or not it found anything;
-        # the lesson is that neither tool's status can be guessed.)
-        #
-        # Not fatal here, because the job is advisory and a handful of
-        # unanalysable files is a known property of this tree (2.7a) rather than
-        # a regression -- but counted and stated, so partial coverage is never
-        # mistaken for full coverage.
+        # Ignoring it would make a run that silently skipped files look complete
+        # -- the shape 11.6 item 7 forbids. Not fatal (advisory job, and a few
+        # unanalysable files are a known property of this tree, 2.7a), but counted
+        # and stated so partial coverage is never read as full.
         errors=$( grep -cE '^[^ ]*:[0-9]+:[0-9]+: (fatal )?error:' "$RUNNER_TEMP/iwyu.txt" || true )
         analysed=$( grep -cE 'has correct #includes|should remove these lines' "$RUNNER_TEMP/iwyu.txt" || true )
 
-        # Strip libstdc++ implementation headers from the suggestions. IWYU
-        # names the header a symbol literally lives in; for std::chrono that is
-        # <bits/chrono.h>, which must never be included directly. The tree's
-        # gcc.stdlib.imp maps many of these back to their public headers -- it
+        # Strip libstdc++ implementation headers from the suggestions.
+        # IWYU names the header a symbol literally lives in; for std::chrono that is
+        # <bits/chrono.h>, which must never be included directly.
+        # The tree's gcc.stdlib.imp maps many of these back to their public headers -- it
         # covers <ext/alloc_traits.h> and <bits/std_abs.h> -- but not all, and
         # <bits/chrono.h> is the one that survives. Removing them here keeps the
         # report actionable; the count is printed so their absence is visible.
@@ -260,7 +206,7 @@ jobs:
         echo "  5. The precompiled-header include, where present."
         echo ""
         echo "  6. Anything that looks marginal on a DIFFERENT toolchain. This"
-        echo "     analysis runs clang 17 against libstdc++ 12. The game is"
+        echo "     analysis runs clang 21 against libstdc++ 12. The game is"
         echo "     built here by clang 14 and g++ 12, on the laptop by MinGW"
         echo "     GCC, and by MSVC in release. Which header a symbol arrives"
         echo "     through differs between standard libraries, so a removal that"

@@ -86,8 +86,10 @@ void TextStyleCheck::check( const MatchFinder::MatchResult &Result )
         if( loc.isInvalid() ) {
             return;
         }
+        // StringRef::equals() was removed after LLVM 17; operator== is the
+        // replacement and works on both, so no version guard is needed.
         if( StringRef( SrcMgr.getPresumedLoc( SrcMgr.getSpellingLoc(
-                loc ) ).getFilename() ).equals( "<scratch space>" ) ) {
+                loc ) ).getFilename() ) == "<scratch space>" ) {
             return;
         }
     }

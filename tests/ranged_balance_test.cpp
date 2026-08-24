@@ -443,7 +443,7 @@ static void shoot_monster( const std::string &gun_type, const std::vector<std::s
                            const std::string &ammo_type, int range,
                            int expected_damage, const std::string &monster_type,
                            const std::function<bool ( const standard_npc &, const monster & )> &other_checks = nullptr,
-                           const Approx &expected_other_checks = Approx( 0 ) )
+                           const Approx &expected_other_check_rate = Approx( 1.0 ) )
 {
     clear_map();
     statistics<int> damage;
@@ -452,6 +452,8 @@ static void shoot_monster( const std::string &gun_type, const std::vector<std::s
     std::unique_ptr<standard_npc> shooter = std::make_unique<standard_npc>( "Shooter", shooter_pos,
                                             std::vector<std::string>(), 5, 10, 10, 10, 10 );
     int other_check_success = 0;
+    // Using rate to avoid confusion over early break vs hitting cap.
+    int other_check_count = 0;
     do {
         shooter->set_body();
         arm_shooter( *shooter, gun_type, mods, ammo_type );
@@ -465,6 +467,7 @@ static void shoot_monster( const std::string &gun_type, const std::vector<std::s
         }
         if( other_checks ) {
             other_check_success += other_checks( *shooter, mon );
+            other_check_count++;
         }
         mon.die( nullptr );
     } while( damage.n() < 200 ); // In fact, stable results can only be obtained when n reaches 10000
@@ -477,7 +480,11 @@ static void shoot_monster( const std::string &gun_type, const std::vector<std::s
     CAPTURE( avg );
     CHECK( avg == Approx( expected_damage ).margin( 20 ) );
     if( other_checks ) {
-        CHECK( other_check_success == expected_other_checks );
+        // Break above requires n() > 100, so this is always >= 100 in practice.
+        // Require it to make sure things work right.
+        REQUIRE( other_check_count > 0 );
+        CHECK( static_cast<double>( other_check_success ) / other_check_count ==
+               expected_other_check_rate );
     }
 }
 
@@ -588,13 +595,13 @@ TEST_CASE( "shot_custom_damage_type", "[gun]" "[slow]" )
     };
     // Check that ballistics damage processes weird damage types and on-hit EOCs
     shoot_monster( "shotgun_s", {}, "test_shot_00_fire_damage", 1, 80,
-                   "mon_test_zombie", check_eocs, Approx( 200 ).margin( 100 ) );
+                   "mon_test_zombie", check_eocs, Approx( 1.0 ).margin( 0.05 ) );
     shoot_monster( "shotgun_s", {}, "test_shot_00_fire_damage", 1, 80,
-                   "mon_test_fire_resist", check_eocs, Approx( 200 ).margin( 100 ) );
+                   "mon_test_fire_resist", check_eocs, Approx( 1.0 ).margin( 0.05 ) );
     shoot_monster( "shotgun_s", {}, "test_shot_00_fire_damage", 1, 18,
-                   "mon_test_fire_vresist", check_eocs, Approx( 200 ).margin( 100 ) );
+                   "mon_test_fire_vresist", check_eocs, Approx( 1.0 ).margin( 0.05 ) );
     shoot_monster( "shotgun_s", {}, "test_shot_00_fire_damage", 1, 0,
-                   "mon_test_fire_immune", check_eocs, Approx( 200 ).margin( 100 ) );
+                   "mon_test_fire_immune", check_eocs, Approx( 1.0 ).margin( 0.05 ) );
 }
 
 // Targeting graph tests

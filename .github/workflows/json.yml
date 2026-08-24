@@ -1,5 +1,13 @@
 name: JSON Validation
 
+# HackJob's Summary:
+# Workflow rebuilt and tested extensively with Claude Opus.
+# Its comments are condensed into "caveman" claude and may be a bit confusing.
+# Some sections will be referring to items within a plan document not in the repo.
+# These are notes for myself and Claude.
+# To summarize the rewrite, we pinned the version and minimized relying on external sources.
+# ~HackJob
+
 on:
   workflow_dispatch:
   pull_request:
@@ -34,9 +42,9 @@ jobs:
 
     runs-on: cdda-ci
 
-    # The whole job is ~7 seconds: the g++ build of json_formatter plus all
-    # 5,379 files. The default is 360 minutes, and this runner shares the box
-    # with Samba and the pool under a 1200% CPU quota.
+    # ~7 s for the whole job: the g++ build of json_formatter plus all 5,379
+    # files. The default is 360 minutes, and this runner shares the box with
+    # Samba and the pool.
     timeout-minutes: 15
 
     steps:
@@ -46,11 +54,10 @@ jobs:
       with:
         persist-credentials: false
 
-    # No tool-presence guard here, unlike astyle.yml. json_formatter is a make
-    # prerequisite, so a missing binary is built and a failed build fails the
-    # job -- there is no path where this reports success without checking.
-    # RELEASE=1 is inert for this target (it adds no flag to the formatter's
-    # compile line) but is kept to match what runs on GitHub.
+    # No tool-presence guard, unlike astyle.yml: json_formatter is a make
+    # prerequisite, so a missing binary gets built and a failed build fails the
+    # job -- no path reports success without checking. RELEASE=1 is inert for
+    # this target but kept to match what runs on GitHub.
     - name: JSON style check
       id: style_json
       run: make style-all-json-parallel RELEASE=1

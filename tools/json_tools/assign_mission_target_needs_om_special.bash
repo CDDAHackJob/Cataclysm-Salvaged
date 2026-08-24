@@ -9,12 +9,11 @@ function Q {
 		-exec jq "${@}" {} +
 }
 
-# One temp DIRECTORY, removed on exit. Two loose mktemp files were left behind
-# on every run, which cost nothing in CI where the container is discarded, but
-# accumulate on a developer machine now that tools/hooks/pre-commit runs this on
-# every commit that stages data JSON -- measured at ~260 kB a run. The trap
-# preserves the exit status below. It also drops mktemp --suffix, which is a GNU
-# extension that BSD and macOS do not have.
+# One temp DIRECTORY, removed on exit. Upstream left two loose mktemp files per
+# run -- free in CI where the container is discarded, but they accumulate on a
+# developer machine now that tools/hooks/pre-commit runs this on every commit
+# staging data JSON (~260 kB a run). The trap preserves the exit status below,
+# and this drops mktemp --suffix, a GNU extension BSD and macOS lack.
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
@@ -42,18 +41,21 @@ Q --slurpfile special_of_terrain "$SPECIAL_OF_TERRAIN" \
    	| select(.type=="mission_definition")
    	| .id as $id
    	| .start?.assign_mission_target?
-	# om_terrain may also be a variable object resolved from game state at
-	# runtime. There is no terrain name to look up, so skip it -- indexing the
-	# map with an object raises a jq error, and the jq exit status reflects only
-	# its last input, so that error is erased by the next file that parses.
+	# NOTE: these are jq comments inside a single-quoted shell string, so no
+	# apostrophes -- one would close the string and break the script.
+	#
+	# om_terrain may be a variable object resolved from game state at runtime --
+	# no terrain name to look up, so skip it. Indexing the map with an object
+	# raises a jq error, and the jq exit status reflects only its LAST input, so
+	# that error is erased by the next file that parses.
    	| select(.om_terrain | type == "string")
    	| .XXX_NEEDS_SPECIAL=$special_of_terrain[][.om_terrain]
    	| select(.XXX_NEEDS_SPECIAL)
-	# om_special has the same string-or-variable-object form as om_terrain, and
-	# an object never equals a string, so a mission using the variable form would
-	# fall through the comparison below and be reported as missing an om_special
-	# it plainly has. An absent om_special is null, not an object, so the case
-	# this whole check exists to catch is still reported.
+	# om_special takes the same string-or-object form, and an object never equals
+	# a string, so a mission using the variable form would fall through the
+	# comparison below and be reported as MISSING an om_special it plainly has.
+	# An absent om_special is null, not an object, so the case this check exists
+	# to catch is still reported.
 	| select(.om_special | type != "object")
 	| select(all(.om_special != .XXX_NEEDS_SPECIAL[]; .))
    	| {id: $id, om_special, XXX_NEEDS_SPECIAL}' \

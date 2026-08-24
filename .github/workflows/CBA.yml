@@ -1,32 +1,28 @@
 name: Clang Build Analyzer
 
-# Profiles BUILD TIME, not game performance: ranks the slowest translation
-# units, the heaviest headers by include count, and the most expensive template
-# instantiations. Pairs with iwyu. Note it profiles the clang/Linux build, not
-# the MSVC build the operator actually waits on (CDDA_CI_PLAN.md 2.4).
+# HackJob's Summary:
+# Workflow rebuilt and tested extensively with Claude Opus.
+# Its comments are condensed into "caveman" claude and may be a bit confusing.
+# Some sections will be referring to items within a plan document not in the repo.
+# These are notes for myself and Claude.
+# To summarize the rewrite, we moved to clang 21 and minimized relying on external sources.
+# ~HackJob
 #
-# DISPATCH ONLY. Upstream also ran this on every push to master. That is a full
-# -ftime-trace build of the game AND its test suite -- the Makefile defaults to
-# TESTS=1, see the analyze step -- measured below at ~5 minutes and 774 MB of
-# trace files, for a report nobody reads unless they are actively hunting compile
-# time. It is a tool you reach for, not a gate, so the push trigger is dropped
-# (CDDA_CI_PLAN.md 1.8) and there is no pull_request trigger to add.
+# Profiles BUILD TIME, not game performance: ranks slowest translation units,
+# heaviest headers, costliest template instantiations. Pairs with iwyu. Profiles
+# the clang/Linux build, not the MSVC one you wait on (CDDA_CI_PLAN.md 2.4).
 #
-# NO paths: FILTER, AND DO NOT ADD ONE HERE EXPECTING IT TO DO ANYTHING. The
-# schema ACCEPTS `paths:` under workflow_dispatch -- validated green, measured --
-# but a manual dispatch has no changed-file set for it to filter, so it would sit
-# there inert while looking like a working filter. That is worse than its absence.
-# The honest reason there is no filter is that no file-change pattern predicts
-# when a build profile is wanted: the answer would be "any header anyone
-# includes". The trigger is a human deciding to ask.
+# DISPATCH ONLY. Upstream ran it on every push to master: a full -ftime-trace
+# build of game AND test suite (Makefile defaults TESTS=1), ~5 min, 774 MB of
+# traces, for a report nobody reads unless hunting compile time. Tool, not gate
+# (1.8). No paths: filter -- a paths: block is ACCEPTED under workflow_dispatch
+# but has nothing to filter, so it would look like a filter and be inert.
 on:
   workflow_dispatch:
 
-# Upstream mixed github.event_name into the group so a master push and a manual
-# dispatch could run concurrently. With the push trigger gone there is only one
-# event, so the group is static. cancel-in-progress because two dispatches mean
-# the second answer is the one wanted, and each holds a CPU-bound build for
-# minutes.
+# Static group -- upstream mixed github.event_name in so a push and a dispatch
+# could coexist, and the push trigger is gone. Cancel: the second answer is the
+# wanted one, and each run holds a CPU-bound build for minutes.
 concurrency:
   group: clang-build-analyzer
   cancel-in-progress: true
@@ -38,97 +34,80 @@ jobs:
   build:
     runs-on: cdda-ci
 
-    # Measured under the limits this job will actually run with -- the runner
-    # gives job containers --cpuset-cpus=0-15 --memory=12g, which is 8 P-cores
-    # (16 threads) of an i7-12700K, reserving the 4 E-cores for ZFS, Samba and
-    # the panel. The full build took 316 s there and peaked at 8.62 GB, 72% of
-    # the memory cap. Unconstrained on all 20 threads it was 292 s, so the limits
-    # cost about 8%.
+    # Measured under the limits this job actually runs with: --cpuset-cpus=0-11
+    # --memory=16g, 6 P-cores / 12 threads of an i7-12700K, the rest left for
+    # ZFS, Samba and the panel. 377 s, peak 7.46 GB (47% of the cap). Cut from
+    # 0-15 for heat, not speed: 316 s and 8.62 GB there, but cores at TjMax.
     #
     # 30 minutes is headroom for a cold link and a busy box, not an estimate of
-    # the work. Do not tighten it toward the measurement -- a full compile has
-    # far more variance than the second-scale checks, and this is the first of
-    # several: matrix, iwyu, clang-tidy and emscripten all build the tree too,
-    # and should be sized from their own measurements rather than from this one.
+    # the work. Do not tighten it toward the measurement -- a full compile varies
+    # far more than the second-scale checks.
     timeout-minutes: 30
 
     steps:
-    # persist-credentials: false because nothing here pushes. The default leaves
-    # a token in the workspace .git/config for the life of the job.
+    # persist-credentials: false -- nothing here pushes, and the default leaves a
+    # token in the workspace .git/config for the life of the job.
     - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       with:
         persist-credentials: false
 
-    # NO apt-get STEP AT ALL. Upstream installed `libncursesw5-dev gettext`
-    # without an `apt-get update` first, which fails outright on this image's
-    # empty cache -- but the fix was never to add the update. Every dependency
-    # this job needs is baked into cdda-ci (CDDA_CI_PLAN.md 11.4), which is the
-    # standing rule for workflows that run on the Forgejo side:
+    # NO apt-get STEP AT ALL. Upstream installed `libncursesw5-dev gettext` with
+    # no `apt-get update` -- fails outright on this image's empty cache, but the
+    # fix was never to add the update. Everything is baked into cdda-ci (11.4),
+    # the standing rule for Forgejo-side workflows: ncurses and gettext for the
+    # game build, clang-21 because -ftime-trace is a clang feature g++ lacks, and
+    # zlib1g-dev because src/cata_utility.cpp includes <zconf.h> -- absent here
+    # where ubuntu-latest preinstalls it, so the build once died 53 files in at
+    # obj/cata_utility.o looking like a source fault.
     #
-    #   libncursesw5-dev, gettext   already baked for the game build
-    #   clang                       -ftime-trace is a clang feature and this
-    #                               workflow exists to consume it; g++ has no
-    #                               equivalent. Bookworm's default is 14.0.6,
-    #                               exactly the clang++-14 upstream named, so no
-    #                               LLVM apt repo is involved. Unversioned, and
-    #                               it does not collide with clang-tidy's 17 or
-    #                               iwyu's 19 -- those invoke clang++-17 and
-    #                               clang++-19 by name.
-    #   zlib1g-dev                  src/cata_utility.cpp includes <zconf.h>;
-    #                               ubuntu-latest preinstalls zlib headers and
-    #                               this base image did not, so the build died
-    #                               53 files in at obj/cata_utility.o looking
-    #                               like a source fault.
+    # clang MOVED FROM UNVERSIONED (bookworm's 14.0.6) 2026-08-22: 14 was
+    # inherited from the clang++-14 upstream happened to name, not chosen, and
+    # profiling four majors behind what the matrix builds with measures a build
+    # nobody ships. SAFE because this emits a PROFILE, not a verdict -- a newer
+    # clang makes a timing DIFFERENT, not wrong. clang-tidy is NOT moved with it:
+    # it gates, and 21 surfaces 746 new findings (CDDA_TOOLCHAIN_PLAN.md step 5,
+    # open). CONSEQUENCE: profiles compare only against the same compiler;
+    # anything measured before that date was taken under clang 14.
     #
-    # Neither clang nor zlib is version-ASSERTED, unlike astyle and flake8. That
-    # rule is "assert what decides a verdict": a wrong astyle silently reformats
-    # the tree, whereas this job emits a profile, and a different clang makes it
-    # DIFFERENT rather than wrong.
-    #
-    # Which is exactly why the version is still printed below. With the install
-    # step gone the compiler no longer appears anywhere in the log, and a build
-    # profile is only comparable against runs from the same compiler. Print it so
-    # any saved report can be attributed to one.
+    # Not version-ASSERTED, unlike astyle and flake8 -- assert what decides a
+    # verdict. Still PRINTED below: with the install step gone the compiler
+    # appears nowhere else in the log, and a saved profile must be attributable.
     - name: verify toolchain
       run: |
         set -eu
 
-        # Not `clang++ --version | head -1` alone: under `set -e` without
-        # pipefail a pipeline reports the LAST command's status, so head
-        # succeeding would mask clang++ being absent -- the same shape as the
-        # `|| true` this file used to carry.
-        command -v clang++ >/dev/null || {
-          echo "clang++ missing -- expected it baked into the runner image" >&2
+        # VERIFY THE COMPILER THIS JOB ACTUALLY USES. This checked unversioned
+        # `clang++` until 2026-08-22 and kept passing after the build moved to
+        # clang++-21 -- proving clang 14 present while a different compiler did
+        # the work. A guard that outlives what it guards reports green for a
+        # condition nobody depends on. Not `--version | head -1` alone: under
+        # `set -e` without pipefail a pipeline reports the LAST command's status,
+        # so head succeeding masks an absent compiler.
+        command -v clang++-21 >/dev/null || {
+          echo "clang++-21 missing -- expected it baked into the runner image" >&2
           exit 1
         }
-        clang++ --version | head -1
+        clang++-21 --version | head -1
 
-        # The image records everything it bakes, with versions, generated at
-        # build time. Printing it here attributes a saved profile to an exact
-        # toolchain -- the numbers below are only comparable against another run
-        # from the same compiler, and with the install step gone that is the only
-        # place the version would otherwise appear.
+        # Attributes a saved profile to an exact toolchain: the image records
+        # everything it bakes, with versions, generated at build time.
         cat /etc/cdda-ci-versions
 
-    # PINNED, where upstream cloned a moving branch. This clones third-party
-    # code and then EXECUTES it against the repository, which is the same trust
-    # decision as a `uses:` ref -- but it is a `git clone` in a run block, so the
-    # plan's "pin every third-party ref" rule (fix 2) did not reach it. v1.6.0 is
-    # the current release. --recursive is dropped with it: the pinned tag builds
-    # clean without submodules, verified.
-    #
-    # Installed to /usr/local/bin rather than appended to $GITHUB_PATH, so the
-    # later steps do not depend on whether Forgejo implements that file.
+    # PINNED, where upstream cloned a moving branch. This clones third-party code
+    # and then EXECUTES it against the repository -- the same trust decision as a
+    # `uses:` ref, but a `git clone` in a run block, so the plan's pin-every-
+    # third-party-ref rule (fix 2) never reached it. --recursive dropped with it:
+    # the pinned tag builds clean without submodules, verified. Installed to
+    # /usr/local/bin, not $GITHUB_PATH, so later steps do not depend on whether
+    # Forgejo implements that file.
     - name: build Clang Build Analyzer
       run: |
         set -eu
         git clone --depth 1 --branch v1.6.0 \
             https://github.com/aras-p/ClangBuildAnalyzer.git "$RUNNER_TEMP/cba"
 
-        # A TAG IS NOT A PIN. --branch v1.6.0 fetches whatever v1.6.0 points at
-        # today, and upstream can move a tag; the plan's rule for `uses:` refs is
-        # a full SHA precisely because of that, and cloning by tag would have been
-        # a weaker pin wearing the same clothes. git cannot --branch a bare SHA on
+        # A TAG IS NOT A PIN -- upstream can move v1.6.0, which is why the plan's
+        # rule for `uses:` refs is a full SHA. git cannot --branch a bare SHA on
         # a shallow clone, so the tag fetches and the commit is asserted after.
         got=$( git -C "$RUNNER_TEMP/cba" rev-parse HEAD )
         want=bae0cb488cce944bfc3da9850a69ad621701ebef # v1.6.0
@@ -142,12 +121,10 @@ jobs:
         cmake --build "$RUNNER_TEMP/cba/build" -- -j"$(nproc)"
         install -m 0755 "$RUNNER_TEMP/cba/build/ClangBuildAnalyzer" /usr/local/bin/
 
-        # The SHA check above proves WHAT WAS CLONED; this proves what was BUILT.
-        # They are not the same claim -- a correct checkout can still produce a
-        # binary that does not run, and cmake failing mid-build would leave an
-        # older one on PATH. `--version` exits 0 and prints "ClangBuildAnalyzer
-        # 1.6.0" (measured), and it is written as an assertion because a bare
-        # `--version || true` would report a broken binary as a successful step.
+        # The SHA check proves WHAT WAS CLONED; this proves what was BUILT. A
+        # correct checkout can still produce a binary that does not run, and
+        # cmake failing mid-build would leave an older one on PATH. Asserted, not
+        # `--version || true`, which reports a broken binary as a success.
         ver=$( ClangBuildAnalyzer --version )
         case "$ver" in
           *1.6.0*) echo "$ver" ;;
@@ -155,74 +132,70 @@ jobs:
         esac
 
     # Turns compiler diagnostics into inline annotations. Presentational only --
-    # it cannot change pass or fail, and whether Forgejo honours ::add-matcher::
-    # is unverified (same open question as flake8.yml). Kept rather than dropped
-    # because clang-tidy, iwyu and matrix use the same action, and a rarely-run
-    # job is exactly where a readable build error is worth most.
+    # cannot change pass or fail; whether Forgejo honours ::add-matcher:: is
+    # unverified (as in flake8.yml). Kept: clang-tidy, iwyu and matrix use it too.
     #
-    # THE ABSOLUTE URL IS LOAD-BEARING, not decoration. A bare
-    # `ammaraskar/gcc-problem-matcher@<sha>` does NOT mean github.com here: the
-    # runner resolves unqualified `uses:` against code.forgejo.org, which hosts
-    # its own small set of actions and not this one. Written bare, this job fails
-    # before any build with
+    # THE ABSOLUTE URL IS LOAD-BEARING. An unqualified `uses:` resolves against
+    # code.forgejo.org, which does not host this action, so written bare the job
+    # dies before any build with
     #   fatal: repository 'https://code.forgejo.org/ammaraskar/gcc-problem-matcher/' not found
-    # -- measured, and the reason actions/checkout above works unqualified while
-    # this does not (checkout is mirrored there; even actions/labeler is not).
-    # The absolute form pins the source as well as the commit and needs no mirror
-    # (CDDA_CI_PLAN.md 11.3, 11.5e).
+    # Measured. checkout above works bare only because it IS mirrored there;
+    # even actions/labeler is not. Absolute pins source as well as commit
+    # (11.3, 11.5e).
     - uses: https://github.com/ammaraskar/gcc-problem-matcher@cb2e3f949c41b7818628f35f8484a9b0acf90cf9 # master @ 2026-08-15
 
-    # CXXFLAGS=-ftime-trace on the command line is correct despite looking like
-    # it should clobber the Makefile's own flags -- MEASURED, because the
-    # opposite is the natural reading: the compile line goes from 41 tokens to
+    # CXXFLAGS=-ftime-trace does NOT clobber the Makefile's own flags, despite
+    # looking like it should -- MEASURED: the compile line goes from 41 tokens to
     # 42, gaining -ftime-trace and losing nothing. -std=c++17, -Og and the whole
     # -W set survive, so this profiles the real build configuration.
     #
-    # CCACHE IS DELIBERATELY NOT SET. The image carries ccache for matrix.yml,
-    # and the Makefile wires it in only on an explicit CCACHE=1, so this is safe
-    # today -- but a cache hit skips compilation, and a skipped compilation emits
-    # no -ftime-trace JSON. Copying CCACHE=1 across from matrix.yml would leave
-    # this job green, fast, and measuring almost nothing. Do not add it.
+    # CCACHE IS DELIBERATELY NOT SET. A cache hit skips compilation, and a
+    # skipped compilation emits no -ftime-trace JSON; the Makefile wires ccache
+    # in only on an explicit CCACHE=1, so this is safe today. Copying CCACHE=1
+    # from matrix.yml would leave this job green, fast, and measuring nothing.
     #
-    # -j$(nproc) IS CORRECT ONLY BECAUSE THE RUNNER USES --cpuset-cpus. That flag
-    # changes CPU affinity, so nproc reports 16 here and the job launches 16
-    # compilers for 16 threads. --cpus= would NOT: it caps bandwidth without
-    # touching affinity, nproc keeps reporting the host's 20 (measured), and this
-    # line would quietly oversubscribe -- which also raises peak memory, the
-    # thing the 12g cap is closest to. If anyone changes the runner's
-    # container.options away from cpuset, this line has to change with it
-    # (CDDA_CI_PLAN.md 11.5f).
+    # -j$(nproc) IS CORRECT ONLY BECAUSE THE RUNNER USES --cpuset-cpus: it
+    # changes affinity, so nproc reports 12. --cpus= would NOT -- it caps
+    # bandwidth without touching affinity, nproc keeps reporting the host's 20
+    # (measured), and this line would quietly oversubscribe. If
+    # container.options moves off cpuset, this line moves with it (11.5f).
     - name: build with tracing
       run: |
         set -eu
         ClangBuildAnalyzer --start .
-        CLANG=clang++ CXXFLAGS=-ftime-trace make -j"$(nproc)"
+        # -Wno-error=deprecated-declarations IS REQUIRED AT CLANG 21 AND WAS NOT
+        # AT 14. libstdc++ 12 implements std::stable_sort via its own deprecated
+        # std::get_temporary_buffer, and Clang blames the INSTANTIATION POINT --
+        # our stable_sort calls -- so it reads as a defect in this tree. It is
+        # not: Clang 21 x libstdc++ 12 fires it, Clang 21 x libstdc++ 14 is clean
+        # (CDDA_TOOLCHAIN_PLAN.md 1.2) -- what the matrix's two clang++-21 jobs
+        # exist to distinguish, and the Debian sanitizer job carries the same
+        # downgrade. Clang 14 never emitted it, so this job was shielded by being
+        # four majors behind rather than by being correct. -Wno-error=, not
+        # -Wno-: diagnostics stay visible, so a genuine deprecation in project
+        # code is not hidden by the flag that tolerates the standard library's.
+        CLANG=clang++-21 CXXFLAGS="-ftime-trace -Wno-error=deprecated-declarations" \
+          make -j"$(nproc)"
         ClangBuildAnalyzer --stop . buildAnalysis
 
-    # READING THE OUTPUT: THE HEADER COSTS ARE SPLIT AND MUST BE SUMMED.
+    # READING THE OUTPUT: HEADER COSTS ARE SPLIT AND MUST BE SUMMED.
     #
     # The Makefile defaults to TESTS=1 / RUNTESTS=0 (Makefile:212-218), so plain
-    # `make` builds the test suite as well as the game -- about 190 extra
-    # translation units, and real build time a developer waits on, which is why
-    # it is left in scope. The consequence is that test TUs include the same
-    # headers by a relative path, and ClangBuildAnalyzer keys on the path as
-    # written. So every hot header appears TWICE in "Expensive headers":
+    # `make` builds the test suite too -- ~190 extra translation units, kept in
+    # scope because it is real time a developer waits on. Test TUs include the
+    # same headers by a relative path and CBA keys on the path as written, so
+    # every hot header appears TWICE:
     #
     #   267459 ms: src/character.h      (included 196 times)
     #   198277 ms: ../src/character.h   (included 128 times)
     #
-    # Those are one file. Its real cost is 465.7 s -- 17.8% of the entire
-    # frontend -- and reading only the top line understates it by 43%. The same
-    # applies to avatar.h and npc.h, whose combined figures also outrank what
-    # either line shows. Sum the two paths before drawing any conclusion, and
-    # note that a header's rank can change once you do.
+    # One file. Real cost 465.7 s -- 17.8% of the entire frontend -- and the top
+    # line alone understates it by 43%. Same for avatar.h and npc.h. Sum both
+    # paths first; a header's rank can change once you do.
     - name: analyze
       run: ClangBuildAnalyzer --analyze buildAnalysis
 
-    # NO ARTIFACT UPLOAD, where upstream uploaded `**/obj/*.json`. That glob
-    # measured 616 files and 774 MB on a complete build. The analysis above
-    # already prints what the traces are for -- the frontend and backend
-    # rankings, the header and template tables -- so uploading three quarters of
-    # a gigabyte of raw JSON per dispatch would spend the storage to re-derive
-    # what is in the log. Anyone wanting the traces themselves can run the same
-    # three commands locally, which is also the only way to open them.
+    # NO ARTIFACT UPLOAD, where upstream uploaded `**/obj/*.json` -- 616 files
+    # and 774 MB on a complete build. The analysis above already prints what the
+    # traces are for, so uploading them would spend the storage to re-derive what
+    # is in the log. Anyone wanting them can run the same three commands locally.

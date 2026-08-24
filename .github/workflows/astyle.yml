@@ -1,5 +1,12 @@
 name: astyle
 
+# HackJob's Summary:
+# Workflow rebuilt and tested extensively with Claude Opus.
+# Its comments are condensed into "caveman" claude and may be a bit confusing.
+# Some sections will be referring to items within a plan document not in the repo.
+# These are notes for myself and Claude.
+# To summarize the rewrite, we pinned the version and minimized relying on external sources.
+# ~HackJob
 on:
   workflow_dispatch:
   pull_request:
@@ -7,14 +14,12 @@ on:
       - '.github/workflows/astyle.yml'
       - 'Makefile'
       - '.astylerc'
-      # ASTYLE_SOURCES measures 1,172 files and is .cpp and .h ONLY -- 688 and
-      # 484, zero of anything else. '**/*.c' is therefore inert: the tree has no
-      # .c file, and adding one would not put it in ASTYLE_SOURCES either, so
-      # this check would run and come back green without having looked at it.
-      # Kept rather than deleted because an inert trigger costs nothing and the
-      # Makefile is also filtered on, so the commit that adds .c support to
-      # ASTYLE_SOURCES will trigger this job regardless. Do not read it as
-      # evidence that C files are covered; they are not.
+      # ASTYLE_SOURCES is 1,172 files, .cpp and .h ONLY (688 and 484, nothing
+      # else). '**/*.c' is therefore INERT: the tree has no .c file, and adding
+      # one would not put it in ASTYLE_SOURCES, so this check would run and come
+      # back green without looking at it. Kept because an inert trigger costs
+      # nothing and the Makefile is filtered on too, so whatever commit adds .c
+      # support triggers this job anyway. NOT evidence that C files are covered.
       - '**/*.cpp'
       - '**/*.h'
       - '**/*.c'
@@ -32,9 +37,8 @@ jobs:
 
     runs-on: cdda-ci
 
-    # The whole job is ~6 seconds. The default is 360 minutes, and this runner
-    # shares the box with Samba and the pool under a 1200% CPU quota, so a
-    # wedged job would hold that for six hours.
+    # ~6 s for the whole job. The default is 360 minutes, and this runner shares
+    # the box with Samba and the pool, so a wedged job would hold it for six hours.
     timeout-minutes: 15
 
     steps:

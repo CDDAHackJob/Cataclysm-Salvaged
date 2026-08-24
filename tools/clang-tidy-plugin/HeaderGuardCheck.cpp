@@ -107,7 +107,10 @@ class HeaderGuardPPCallbacks : public PPCallbacks
         std::string GetFileName( SourceLocation Loc ) {
             SourceManager &SM = PP->getSourceManager();
             FileID Id = SM.getFileID( Loc );
-            if( const FileEntry *Entry = SM.getFileEntryForID( Id ) ) {
+            // FileEntry::getName() was removed after LLVM 17; FileEntryRef is
+            // the replacement and getFileEntryRefForID exists in 17 too, so this
+            // form needs no version guard.
+            if( const OptionalFileEntryRef Entry = SM.getFileEntryRefForID( Id ) ) {
                 return cleanPath( Entry->getName() );
             } else {
                 return {};

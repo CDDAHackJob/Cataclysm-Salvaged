@@ -1,14 +1,53 @@
-# Cataclysm: Dark Days Ahead - Salvaged Edition
+# Cataclysm
 
-Cataclysm: Dark Days Ahead is a turn-based survival game set in a post-apocalyptic world. While some have described it as a "zombie game", there is far more to Cataclysm than that. Struggle to survive in a harsh, persistent, procedurally generated world. Scavenge the remnants of a dead civilization for food, equipment, or, if you are lucky, a vehicle with a full tank of gas to get you the hell out of Dodge. Fight to defeat or escape from a wide variety of powerful monstrosities, from zombies to giant insects to killer robots and things far stranger and deadlier, and against the others like yourself, who want what you have...
+Cataclysm is an open-source, turn-based, apocalypse survival game set in a slightly futuristic America in an alternate timeline.
+But its not just one apocalypse that hit. It was multiple, and they hit all at once.
+Zombies are just the surface of what you will end up dealing with as you venture out into the strangely flat land of former America.
+Scavenge the area for food, equipment, maybe even a working car with gas. Run into and away from hordes of the undead, mutated insects... and robots?
+<p>
+    There is a lot to handle. And you have a lot to learn about how the world has changed.
+</p>
+There are skills to develop, martial arts to learn, contraptions to build, friends to meet, and horrors to run like hell from.
+Choose to live as a nomad or fortify yourself in a safehouse. Join up with a group or go it alone.
+Live as a low-tech stalker, a tricked-out cyborg, a twisted mutant monstrosity. You might not get much of a choice for the last one.
+
+# Gameplay
+Cataclysm is a top-down tileset game where your every actions is measured against the flow of time.
+This means that unless you are moving or doing something (even pressing the wait key) time doesn't move.
+In the open world this may feel a bit odd, but you will be thankful for the time to think and choose your actions carefully once you kick the hornets nest (sometimes literally) and suddenly have to pick your actions carefully to have a chance at survival.
+<p>
+    You will have to run. You will have to sneak. you will have to scout ahead and judge the risks.
+</p>
+There will be things you don't understand. Knowledge you will have to build both within the game and personally.
+Becoming a ridiculous survivor capable of taking on the Cataclysm is possible, but takes a long time to reach.
+And even the strongest and most broken of builds can be brought down by misfortune and RNG.
+<p> So be prepared. </p>
+
 # Salvaged
-<p align="center">
-    This world is a dark and ruined place; its no longer about what great things may be built by others.
+When you have an open source project go on for 15 years with thousands of contributors, people inevitably split on opinions on where to go.
+Cataclysm: Salvaged is my own fork and will be a solo project to take the game in the direction I choose. I am a scavenger intent on sifting through the scraps and piecing together what I think is fun.
+
+# DDA - Dark Days Ahead by CleverRaven
+Cataclysm: Dark Days ahead is the oldest and biggest version of the game, and the source of all other branches. Its maintainers did the most to build things up, but eventually disagreements saw the other branches emerge. It seeks to discard the scifi and power of the old days, and make the setting more current and grittier, more focused on survival mechanics... It wants to be more like project Zomboid these days, and some heavy-handed deletions of old sections instead of fixing them saw it lose some support, causing TLG to emerge and Bright Nights to gain more popularity.
+<p> 
+    Despite all this, it has the biggest community, the most history, the most documentation, and for a long time was the most developed and polished.
+    Every guide you will see on how to compile, troubleshoot, mod, and play Cataclysm will most likely originate from Dark Days Ahead.
 </p>
-<p align="center">
-    Its about what you can salvage and personally hold on to.
-</p>
-This build is a personal project to salvage what I can from an experimental fork from september 9th, 2024. I originally was looking to be a contributor and hoped to make my mark by straightening out a section of neglected and buggy code nobody but me cared about. And when I was done I found CleverRaven was in the middle of tearing out all sorts of stuff... including what I had gone to fix. Put me off trying anything for a while. So here I am, standing in the ashes with a copy of the past, seeing what I can salvage.
+You can view their github with its links to their community here: https://github.com/cleverraven/cataclysm-dda
+
+# BN - Bright Nights
+The oldest branch, Cataclysm: Bright Nights originates from DDA's stable 0.D release and seeks to keep the setting as it was back then. Wilder, more scifi, more power for the player to go nuts, and less survival mechanics. For a long time it lagged behind CDDA, but it has seen a surge of development and is a great alternative.
+<p>You can view their github with its links to their community here: https://github.com/cataclysmbn/Cataclysm-BN</p>
+
+# TLG - The Last Generation by WormGirl
+The newest branch, The Last Generation is seeing a lot of development and bug fixes, and seems to be positioning itself as a midway point between Dark Days and Bright Nights. It has a steam page just like Dark Days Ahead.
+<p>You can view their github with its links to their community here: https://github.com/Cataclysm-TLG/Cataclysm-TLG/</p>
+
+# Supported Platforms
+Cataclysm tends to come in two main builds (with further options) Curses, and Tiles. The curses build is a barebones no-sound and no-graphics version where everything is in ASCII characters. Its the same game, but stripped down heavily. Tiles gives you more modern options with its tileset packs.
+<p>The end result is that the game traditionally is supported on many Windows and Linux releases, as well as macOS and Android.</p>
+Salvaged is a work in progress, and is currently tested and built for Windows and Linux.
+
 <p align="center">
     <img src="./data/screenshots/ultica-showcase-sep-2021.png" alt="Tileset: Ultica">
 </p>

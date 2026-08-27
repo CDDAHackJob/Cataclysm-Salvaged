@@ -1,47 +1,52 @@
-# Cataclysm
-
-Cataclysm is an open-source, turn-based, apocalypse survival game set in a slightly futuristic America in an alternate timeline.
-But its not just one apocalypse that hit. It was multiple, and they hit all at once.
-Zombies are just the surface of what you will end up dealing with as you venture out into the strangely flat land of former America.
-Scavenge the area for food, equipment, maybe even a working car with gas. Run into and away from hordes of the undead, mutated insects... and robots?
+<h1>The Cataclysm</h1>
+<h3>
+    Its been about two months since the Apocalypse hit.
+    <br>But its not just ONE apocalypse that hit.
+    <br>It was multiple, and they hit all at once.
+    <br>Now they call it "The Cataclysm" and your shelter is no longer safe.
+</h3>
 <p>
-    There is a lot to handle. And you have a lot to learn about how the world has changed.
+    Zombies are just the surface of what you will end up dealing with as you venture out into the strangely flat land of former America.<br>
+    Scavenge the area for food, equipment, maybe even a working car with gas.<br>
+    Run into and away from hordes of the undead, mutated insects... and robots?<br>
+    <b><i>There is a lot to handle. And you have a lot to learn about how the world has changed.</b></i><br>
+    There are skills to develop, martial arts to learn, contraptions to build, friends to meet, and horrors to run like hell from.<br>
+    Choose to live as a nomad or fortify yourself in a safehouse. Join up with a group or go it alone.<br>
+    Live as a low-tech stalker, a tricked-out cyborg, a twisted mutant monstrosity.<br>
+    <b><i>You might not get much of a choice for the last one...</i></b><br>
 </p>
-There are skills to develop, martial arts to learn, contraptions to build, friends to meet, and horrors to run like hell from.
-Choose to live as a nomad or fortify yourself in a safehouse. Join up with a group or go it alone.
-Live as a low-tech stalker, a tricked-out cyborg, a twisted mutant monstrosity. You might not get much of a choice for the last one.
-
-# Gameplay
-Cataclysm is a top-down tileset game where your every actions is measured against the flow of time.
-This means that unless you are moving or doing something (even pressing the wait key) time doesn't move.
-In the open world this may feel a bit odd, but you will be thankful for the time to think and choose your actions carefully once you kick the hornets nest (sometimes literally) and suddenly have to pick your actions carefully to have a chance at survival.
+        
+<h1>Gameplay</h1>
 <p>
-    You will have to run. You will have to sneak. you will have to scout ahead and judge the risks.
-</p>
-There will be things you don't understand. Knowledge you will have to build both within the game and personally.
-Becoming a ridiculous survivor capable of taking on the Cataclysm is possible, but takes a long time to reach.
-And even the strongest and most broken of builds can be brought down by misfortune and RNG.
-<p> So be prepared. </p>
+<b>Cataclysm is a top-down tileset game where your every actions is measured against the flow of time.</b><br>
+This means that unless you are moving or doing something (even pressing the wait key) time doesn't move.<br>
+In the open world this may feel a bit odd, but you will be thankful for the time to think and choose your actions carefully once you kick the hornets nest (sometimes literally) and suddenly have to pick your actions carefully to have a chance at survival.<br>
+<i>You will have to run.<br>
+You will have to sneak.<br>
+You will have to scout ahead and judge the risks.</i><br>
+There will be things you don't understand. Knowledge you will have to build both within the game and personally.<br>
+Becoming a ridiculous survivor capable of taking on the Cataclysm is possible, but takes a long time to reach.<br>
+And even the strongest and most broken of builds can be brought down by misfortune and RNG.<br>
+<b>So be prepared.</b></p>
 
 # Salvaged
 When you have an open source project go on for 15 years with thousands of contributors, people inevitably split on opinions on where to go.
 Cataclysm: Salvaged is my own fork and will be a solo project to take the game in the direction I choose. I am a scavenger intent on sifting through the scraps and piecing together what I think is fun.
 
-# DDA - Dark Days Ahead by CleverRaven
-Cataclysm: Dark Days ahead is the oldest and biggest version of the game, and the source of all other branches. Its maintainers did the most to build things up, but eventually disagreements saw the other branches emerge. It seeks to discard the scifi and power of the old days, and make the setting more current and grittier, more focused on survival mechanics... It wants to be more like project Zomboid these days, and some heavy-handed deletions of old sections instead of fixing them saw it lose some support, causing TLG to emerge and Bright Nights to gain more popularity.
-<p> 
-    Despite all this, it has the biggest community, the most history, the most documentation, and for a long time was the most developed and polished.
-    Every guide you will see on how to compile, troubleshoot, mod, and play Cataclysm will most likely originate from Dark Days Ahead.
-</p>
+
+<h3>DDA - Dark Days Ahead by CleverRaven</h3>
+Cataclysm: Dark Days ahead is the oldest and biggest version of the game, and the source of all other branches. Its maintainers did the most to build things up, but eventually disagreements saw the other branches emerge. It seeks to discard the scifi and power of the old days, and make the setting more current and grittier, more focused on survival mechanics... It wants to be more like project Zomboid these days, and some heavy-handed deletions of old sections instead of fixing them saw it lose some support, causing TLG to emerge and Bright Nights to gain more popularity.<br>
+Despite all this, it has the biggest community, the most history, the most documentation, and for a long time was the most developed and polished.
+Every guide you will see on how to compile, troubleshoot, mod, and play Cataclysm will most likely originate from Dark Days Ahead.<br>
 You can view their github with its links to their community here: https://github.com/cleverraven/cataclysm-dda
 
-# BN - Bright Nights
-The oldest branch, Cataclysm: Bright Nights originates from DDA's stable 0.D release and seeks to keep the setting as it was back then. Wilder, more scifi, more power for the player to go nuts, and less survival mechanics. For a long time it lagged behind CDDA, but it has seen a surge of development and is a great alternative.
-<p>You can view their github with its links to their community here: https://github.com/cataclysmbn/Cataclysm-BN</p>
+<h3>BN - Bright Nights</h3>
+The oldest branch, Cataclysm: Bright Nights originates from DDA's stable 0.D release and seeks to keep the setting as it was back then. Wilder, more scifi, more power for the player to go nuts, and less survival mechanics. For a long time it lagged behind CDDA, but it has seen a surge of development and is a great alternative.<br>
+You can view their github with its links to their community here: https://github.com/cataclysmbn/Cataclysm-BN
 
-# TLG - The Last Generation by WormGirl
-The newest branch, The Last Generation is seeing a lot of development and bug fixes, and seems to be positioning itself as a midway point between Dark Days and Bright Nights. It has a steam page just like Dark Days Ahead.
-<p>You can view their github with its links to their community here: https://github.com/Cataclysm-TLG/Cataclysm-TLG/</p>
+<h3>TLG - The Last Generation by WormGirl</h3>
+The newest branch, The Last Generation is seeing a lot of development and bug fixes, and seems to be positioning itself as a midway point between Dark Days and Bright Nights. It has a steam page just like Dark Days Ahead.<br>
+You can view their github with its links to their community here: https://github.com/Cataclysm-TLG/Cataclysm-TLG/
 
 # Supported Platforms
 Cataclysm tends to come in two main builds (with further options) Curses, and Tiles. The curses build is a barebones no-sound and no-graphics version where everything is in ASCII characters. Its the same game, but stripped down heavily. Tiles gives you more modern options with its tileset packs.

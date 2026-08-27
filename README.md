@@ -34,7 +34,17 @@ Cataclysm tends to come in two main builds (with further options) Curses, and Ti
 The end result is that the game traditionally is supported on many Windows and Linux releases, as well as macOS and Android.<br>
 Salvaged is a work in progress, and is currently tested and built for Windows and Linux.
 
-<h1>Versions</h1>
+<h1>Downloads</h1>
+
+<h1>Compiling</h1>
+Please read [COMPILING.md](doc/COMPILING/COMPILING.md) - it covers general information and more specific recipes for Linux, OS X, Windows and BSD. See [COMPILER_SUPPORT.md](doc/COMPILING/COMPILER_SUPPORT.md) for details on which compilers we support. And you can always dig for more information in [doc/](https://github.com/CleverRaven/Cataclysm-DDA/tree/master/doc).
+
+We also have the following build guides:
+* Building on Windows with `MSYS2` at [COMPILING-MSYS.md](doc/COMPILING/COMPILING-MSYS.md)
+* Building on Windows with `vcpkg` at [COMPILING-VS-VCPKG.md](doc/COMPILING/COMPILING-VS-VCPKG.md)
+* Building with `cmake` at [COMPILING-CMAKE.md](doc/COMPILING/COMPILING-CMAKE.md)  (*unofficial guide*)
+
+<h1>Other Versions</h1>
 When you have an open source project go on for 15 years with thousands of contributors, people inevitably split on opinions on where to go.
 Cataclysm: Salvaged is my own fork and will be a solo project to take the game in the direction I choose. I am a scavenger intent on sifting through the scraps and piecing together what I think is fun.<br>
 Anything I have is free to take per the licenses.<br>

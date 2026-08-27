@@ -47,8 +47,7 @@ We also have the following build guides:
 <h1>Other Versions</h1>
 When you have an open source project go on for 15 years with thousands of contributors, people inevitably split on opinions on where to go.
 Cataclysm: Salvaged is my own fork and will be a solo project to take the game in the direction I choose. I am a scavenger intent on sifting through the scraps and piecing together what I think is fun.<br>
-Anything I have is free to take per the licenses.<br>
-Just take a mention of me along with you.<br>
+Anything I have is free to take per the licenses; just take a mention of me along with you.<br>
 I will be doing the same for what I take from others.<br>
 Below are some inaccurate summaries of the main branches:
 

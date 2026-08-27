@@ -29,13 +29,21 @@ Becoming a ridiculous survivor capable of taking on the Cataclysm is possible, b
 And even the strongest and most broken of builds can be brought down by misfortune and RNG.<br>
 <b>So be prepared.</b></p>
 
-# Salvaged
-When you have an open source project go on for 15 years with thousands of contributors, people inevitably split on opinions on where to go.
-Cataclysm: Salvaged is my own fork and will be a solo project to take the game in the direction I choose. I am a scavenger intent on sifting through the scraps and piecing together what I think is fun.
+<h1>Supported Platforms</h1>
+Cataclysm tends to come in two main builds (with further options) Curses, and Tiles. The curses build is a barebones no-sound and no-graphics version where everything is in ASCII characters. Its the same game, but stripped down heavily. Tiles gives you more modern options with its tileset packs.<br>
+The end result is that the game traditionally is supported on many Windows and Linux releases, as well as macOS and Android.<br>
+Salvaged is a work in progress, and is currently tested and built for Windows and Linux.
 
+<h1>Versions</h1>
+When you have an open source project go on for 15 years with thousands of contributors, people inevitably split on opinions on where to go.
+Cataclysm: Salvaged is my own fork and will be a solo project to take the game in the direction I choose. I am a scavenger intent on sifting through the scraps and piecing together what I think is fun.<br>
+Anything I have is free to take per the licenses.<br>
+Just take a mention of me along with you.<br>
+I will be doing the same for what I take from others.<br>
+Below are some inaccurate summaries of the main branches:
 
 <h3>DDA - Dark Days Ahead by CleverRaven</h3>
-Cataclysm: Dark Days ahead is the oldest and biggest version of the game, and the source of all other branches. Its maintainers did the most to build things up, but eventually disagreements saw the other branches emerge. It seeks to discard the scifi and power of the old days, and make the setting more current and grittier, more focused on survival mechanics... It wants to be more like project Zomboid these days, and some heavy-handed deletions of old sections instead of fixing them saw it lose some support, causing TLG to emerge and Bright Nights to gain more popularity.<br>
+Cataclysm: Dark Days ahead is the oldest and biggest version of the game, and the source of all other branches. Its maintainers did the most to build things up, but eventually disagreements saw the other branches emerge. It seeks to discard the scifi and power of the old days, and make the setting more current and grittier, more focused on survival mechanics. It wants to be more like project Zomboid these days, and some heavy-handed deletions of old sections instead of fixing them saw it lose some support, causing TLG to emerge and Bright Nights to gain more popularity.<br>
 Despite all this, it has the biggest community, the most history, the most documentation, and for a long time was the most developed and polished.
 Every guide you will see on how to compile, troubleshoot, mod, and play Cataclysm will most likely originate from Dark Days Ahead.<br>
 You can view their github with its links to their community here: https://github.com/cleverraven/cataclysm-dda
@@ -47,11 +55,6 @@ You can view their github with its links to their community here: https://github
 <h3>TLG - The Last Generation by WormGirl</h3>
 The newest branch, The Last Generation is seeing a lot of development and bug fixes, and seems to be positioning itself as a midway point between Dark Days and Bright Nights. It has a steam page just like Dark Days Ahead.<br>
 You can view their github with its links to their community here: https://github.com/Cataclysm-TLG/Cataclysm-TLG/
-
-# Supported Platforms
-Cataclysm tends to come in two main builds (with further options) Curses, and Tiles. The curses build is a barebones no-sound and no-graphics version where everything is in ASCII characters. Its the same game, but stripped down heavily. Tiles gives you more modern options with its tileset packs.
-<p>The end result is that the game traditionally is supported on many Windows and Linux releases, as well as macOS and Android.</p>
-Salvaged is a work in progress, and is currently tested and built for Windows and Linux.
 
 <p align="center">
     <img src="./data/screenshots/ultica-showcase-sep-2021.png" alt="Tileset: Ultica">

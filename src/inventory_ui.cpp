@@ -109,7 +109,7 @@ item_name_t &get_cached_name( item const *it )
 item_location get_topmost_parent( item_location const &topmost, item_location const &loc,
                                   inventory_selector_preset const &preset )
 {
-    return preset.is_shown( loc ) ? topmost ? topmost : loc : item_location{};
+    return preset.is_shown( loc ) ? ( topmost ? topmost : loc ) : item_location{};
 }
 
 using parent_path_t = std::vector<item_location>;
@@ -3950,8 +3950,8 @@ void inventory_multiselector::on_input( const inventory_input &input )
             size_t const count = entry.chosen_count;
             size_t const max = entry.get_available_count();
             size_t const newcount = input.action == "INCREASE_COUNT"
-                                    ? count < max ? count + 1 : max
-                                    : count > 1 ? count - 1 : 0;
+                                    ? ( count < max ? count + 1 : max )
+                                    : ( count > 1 ? count - 1 : 0 );
             toggle_entry( entry, newcount );
         }
     } else if( input.action == "VIEW_CATEGORY_MODE" ) {

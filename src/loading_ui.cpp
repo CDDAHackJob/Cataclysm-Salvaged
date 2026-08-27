@@ -27,7 +27,7 @@ struct ui_state {
     SDL_Texture_Ptr splash;
     cata_path chosen_load_img;
 #else
-    size_t splash_width = 0;
+    int splash_width = 0;
     std::vector<std::string> splash;
     std::string blanks;
 #endif
@@ -58,7 +58,9 @@ static void redraw()
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
 #else
-    int x = ( TERMX - static_cast<int>( gLUI->splash_width ) ) / 2;
+    // Clamp: art wider than the terminal would give a negative x, and
+    // print_colored_text silently skips its wmove when x is negative.
+    int x = std::max( 0, ( TERMX - gLUI->splash_width ) / 2 );
     int y = 0;
     nc_color white = c_white;
     for( const std::string &line : gLUI->splash ) {
@@ -117,14 +119,16 @@ static void update_state( const std::string &context, const std::string &step )
         gLUI->window_size = gLUI->splash_size + ImVec2{ 0.0f, 2.0f * ImGui::GetTextLineHeightWithSpacing() };
 #else
         std::string splash = read_whole_file( PATH_INFO::title( get_holiday_from_time() ) ).value_or(
-                                 _( "Cataclysm: Dark Days Ahead" ) );
+                                 _( "Cataclysm: Salvaged" ) );
         gLUI->splash = string_split( splash, '\n' );
         gLUI->blanks = std::string( TERMX, ' ' );
         for( const std::string &line : gLUI->splash ) {
             if( !line.empty() && line[0] == '#' ) {
                 continue;
             }
-            gLUI->splash_width = std::max( gLUI->splash_width, remove_color_tags( line ).length() );
+            // Display columns, not bytes: multi-byte art (en.halloween) would
+            // otherwise measure several times its true width and shift left.
+            gLUI->splash_width = std::max( gLUI->splash_width, utf8_width( line, true ) );
         }
 #endif
     }

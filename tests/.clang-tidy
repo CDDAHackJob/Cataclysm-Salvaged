@@ -1,0 +1,25 @@
+# Catch2 decomposes EVERY assertion so it can print both operands on failure:
+# `REQUIRE( a == b )` expands, via INTERNAL_CATCH_TEST, to
+# `Catch::Decomposer() <= a == b` (tests/catch/catch.hpp). `Decomposer::operator<=`
+# is a low-precedence hook that captures the left operand; the `<=` is a parsing
+# trick, not a comparison. But it IS a chained comparison in the grammar, so
+# bugprone-chained-comparison fires on every REQUIRE/CHECK containing one.
+#
+# MEASURED 2026-08-24, whole tree under LLVM 21: 8,576 sites, ALL in tests/,
+# ZERO in src/ or tools/. That is 70% of every finding in the tree.
+#
+# Not fixable here. Catch2 already wraps the same construct in
+# CATCH_INTERNAL_SUPPRESS_PARENTHESES_WARNINGS for the compiler's own
+# -Wparentheses; that pragma does not reach clang-tidy. The only "fix" would be
+# parenthesising inside each assertion, which defeats the decomposition and loses
+# the operand values from failure output -- the reason Catch2 does this at all.
+#
+# SCOPED TO tests/ DELIBERATELY, not disabled tree-wide: src/ has no hits today,
+# so a genuine `a < b < c` in shipping code must still fail the gate.
+#
+# InheritParentConfig IS REQUIRED. Without it a child .clang-tidy REPLACES the
+# parent's config rather than extending it, so this file would disable every
+# check for tests/ while looking like it disabled one. It fails silently -- the
+# symptom is clang-tidy printing nothing at all, which reads as "clean".
+InheritParentConfig: true
+Checks: '-bugprone-chained-comparison'

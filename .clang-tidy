@@ -86,8 +86,10 @@ readability-*,\
 -modernize-use-default-member-init,\
 -modernize-use-nodiscard,\
 -performance-avoid-endl,\
+-performance-enum-size,\
 -performance-noexcept-swap,\
 -performance-no-automatic-move,\
+-readability-avoid-nested-conditional-operator,\
 -readability-avoid-unconditional-preprocessor-if,\
 -readability-container-data-pointer,\
 -readability-convert-member-functions-to-static,\
@@ -97,6 +99,7 @@ readability-*,\
 -readability-identifier-naming,\
 -readability-implicit-bool-conversion,\
 -readability-magic-numbers,\
+-readability-math-missing-parentheses,\
 -readability-named-parameter,\
 -readability-simplify-boolean-expr,\
 -readability-suspicious-call-argument,\

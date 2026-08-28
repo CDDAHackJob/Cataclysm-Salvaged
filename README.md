@@ -36,15 +36,15 @@ Salvaged is a work in progress, and is currently tested and built for Windows an
 Given time it will likely run into gaps where the current tilesets no longer support everything I add to it, but not now.
 
 <h1>Downloads</h1>
-At some point I will have the github publishing official releases on a rotating cycle. I don't have my own websites to host my versions of the large support network of documents C:DDA has, and may resort to shipping them with the repository. Fortunately, keeping them text makes them easily compressible.
--REWORK THIS LATER
--SEE ABOUT ROTATING RELEASE PUBLISHING
+At some point I will have the github publishing official releases on a rotating cycle. I don't have my own websites to host my versions of the large support network of documents C:DDA has, and may resort to shipping them with the repository. Fortunately, keeping them text makes them easily compressible.<br>
+-REWORK THIS LATER<br>
+-SEE ABOUT ROTATING RELEASE PUBLISHING<br>
 
 <h1>Compiling</h1>
-So far this should be compilable on linux or windows via gcc, clang, cmake, MSYS2, and vcpkg. The testing matrix runs every time I merge experimental's branch into master for a release, and it builds the game a number of ways across a number of build options.
--PUBLISH SUPPORTED BUILDS EVENTUALLY
--LIST BUILD GUIDE EVENTUALLY
--PUBLISH TESTS EVENTUALLY
+So far this should be compilable on linux or windows via gcc, clang, cmake, MSYS2, and vcpkg. The testing matrix runs every time I merge experimental's branch into master for a release, and it builds the game a number of ways across a number of build options.<br>
+-PUBLISH SUPPORTED BUILDS EVENTUALLY<br>
+-LIST BUILD GUIDE EVENTUALLY<br>
+-PUBLISH TESTS EVENTUALLY<br>
 
 Please read [COMPILING.md](doc/COMPILING/COMPILING.md) - it covers general information and more specific recipes for Linux, OS X, Windows and BSD. See [COMPILER_SUPPORT.md](doc/COMPILING/COMPILER_SUPPORT.md) for details on which compilers we support. And you can always dig for more information in [doc/](https://github.com/CleverRaven/Cataclysm-DDA/tree/master/doc).
 
@@ -66,7 +66,7 @@ Despite all this, it has the biggest community, the most history, the most docum
 Every guide you will see on how to compile, troubleshoot, mod, and play Cataclysm will most likely originate from Dark Days Ahead.<br>
 You can view their github with its links to their community here: https://github.com/cleverraven/cataclysm-dda
 
-<h3>BN - Bright Nights</h3>
+<h3>BN - [Bright Nights](https://github.com/cataclysmbn/Cataclysm-BN)</h3>
 The oldest branch, Cataclysm: Bright Nights originates from DDA's stable 0.D release and seeks to keep the setting as it was back then. Wilder, more scifi, more power for the player to go nuts, and less survival mechanics. For a long time it lagged behind CDDA, but it has seen a surge of development and is a great alternative.<br>
 You can view their github with its links to their community here: https://github.com/cataclysmbn/Cataclysm-BN
 

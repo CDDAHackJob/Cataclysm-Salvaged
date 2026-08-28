@@ -30,13 +30,22 @@ And even the strongest and most broken of builds can be brought down by misfortu
 <b>So be prepared.</b></p>
 
 <h1>Supported Platforms</h1>
-Cataclysm tends to come in two main builds (with further options) Curses, and Tiles. The curses build is a barebones no-sound and no-graphics version where everything is in ASCII characters. Its the same game, but stripped down heavily. Tiles gives you more modern options with its tileset packs.<br>
+Cataclysm tends to come in two main builds (with further options) Curses, and Tiles. The curses build is a barebones no-sound and no-graphics version where everything is in ASCII characters. Its the same game, but stripped down heavily. Tiles gives you more modern options with its tileset packs. There are a number of tilesets available to add to the game, and by default it will release and compile with several of the most popular.<br>
 The end result is that the game traditionally is supported on many Windows and Linux releases, as well as macOS and Android.<br>
-Salvaged is a work in progress, and is currently tested and built for Windows and Linux.
+Salvaged is a work in progress, and is currently tested and built for Windows and Linux.<br>
+Given time it will likely run into gaps where the current tilesets no longer support everything I add to it, but not now.
 
 <h1>Downloads</h1>
+At some point I will have the github publishing official releases on a rotating cycle. I don't have my own websites to host my versions of the large support network of documents C:DDA has, and may resort to shipping them with the repository. Fortunately, keeping them text makes them easily compressible.
+-REWORK THIS LATER
+-SEE ABOUT ROTATING RELEASE PUBLISHING
 
 <h1>Compiling</h1>
+So far this should be compilable on linux or windows via gcc, clang, cmake, MSYS2, and vcpkg. The testing matrix runs every time I merge experimental's branch into master for a release, and it builds the game a number of ways across a number of build options.
+-PUBLISH SUPPORTED BUILDS EVENTUALLY
+-LIST BUILD GUIDE EVENTUALLY
+-PUBLISH TESTS EVENTUALLY
+
 Please read [COMPILING.md](doc/COMPILING/COMPILING.md) - it covers general information and more specific recipes for Linux, OS X, Windows and BSD. See [COMPILER_SUPPORT.md](doc/COMPILING/COMPILER_SUPPORT.md) for details on which compilers we support. And you can always dig for more information in [doc/](https://github.com/CleverRaven/Cataclysm-DDA/tree/master/doc).
 
 We also have the following build guides:

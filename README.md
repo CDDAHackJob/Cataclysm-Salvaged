@@ -1,9 +1,9 @@
 <h1>The Cataclysm</h1>
 <h3>
     Its been about two months since the Apocalypse hit.
-    <br>But its not just ONE apocalypse that hit.
+    <br>But it was not just ONE apocalypse that hit.
     <br>It was multiple, and they hit all at once.
-    <br>Now they call it "The Cataclysm" and your shelter is no longer safe.
+    <br>Now they call it "The Cataclysm", and your shelter is no longer safe.
 </h3>
 <p>
     Zombies are just the surface of what you will end up dealing with as you venture out into the strangely flat land of former America.<br>

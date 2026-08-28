@@ -11,7 +11,7 @@
     Run into and away from hordes of the undead, mutated insects... and robots?<br>
     <b><i>There is a lot to handle. And you have a lot to learn about how the world has changed.</b></i><br>
     There are skills to develop, martial arts to learn, contraptions to build, friends to meet, and horrors to run like hell from.<br>
-    Choose to live as a nomad or fortify yourself in a safehouse. Join up with a group or go it alone.<br>
+    Choose to live as a nomad or fortify yourself in a safehouse. Recruit some followers or go it alone.<br>
     Live as a low-tech stalker, a tricked-out cyborg, a twisted mutant monstrosity.<br>
     <b><i>You might not get much of a choice for the last one...</i></b><br>
 </p>

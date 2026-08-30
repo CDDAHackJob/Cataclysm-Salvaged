@@ -1,10 +1,11 @@
-<h1>The Cataclysm</h1>
-<h3>
-    Its been about two months since the Apocalypse hit.
-    <br>But it was not just ONE apocalypse that hit.
-    <br>It was multiple, and they hit all at once.
-    <br>Now they call it "The Cataclysm", and your shelter is no longer safe.
-</h3>
+<h1 align="center">The Cataclysm<small><br>
+    Its been about two months since the end of the world.<br>
+    It was not just one apocalypse that hit, it was multiple, all at once.<br>
+    Now they call it "The Cataclysm", and your shelter is no longer safe.
+</small></h1>
+<p align="center">
+  <img src="gfx/rooftop-splash.png">
+</p>
 <p>
     Zombies are just the surface of what you will end up dealing with as you venture out into the strangely flat land of former America.<br>
     Scavenge the area for food, equipment, maybe even a working car with gas.<br>
@@ -60,19 +61,16 @@ Anything I have is free to take per the licenses; just take a mention of me alon
 I will be doing the same for what I take from others.<br>
 Below are some inaccurate summaries of the main branches:
 
-<h3>DDA - Dark Days Ahead by CleverRaven</h3>
+<h3>DDA - <a href="https://github.com/cleverraven/cataclysm-dda">Dark Days Ahead</a> by CleverRaven</h3>
 Cataclysm: Dark Days ahead is the oldest and biggest version of the game, and the source of all other branches. Its maintainers did the most to build things up, but eventually disagreements saw the other branches emerge. It seeks to discard the scifi and power of the old days, and make the setting more current and grittier, more focused on survival mechanics. It wants to be more like project Zomboid these days, and some heavy-handed deletions of old sections instead of fixing them saw it lose some support, causing TLG to emerge and Bright Nights to gain more popularity.<br>
 Despite all this, it has the biggest community, the most history, the most documentation, and for a long time was the most developed and polished.
 Every guide you will see on how to compile, troubleshoot, mod, and play Cataclysm will most likely originate from Dark Days Ahead.<br>
-You can view their github with its links to their community here: https://github.com/cleverraven/cataclysm-dda
 
-<h3>BN - [Bright Nights](https://github.com/cataclysmbn/Cataclysm-BN)</h3>
+<h3>BN - <a href="https://github.com/cataclysmbn/Cataclysm-BN">Bright Nights</a></h3>
 The oldest branch, Cataclysm: Bright Nights originates from DDA's stable 0.D release and seeks to keep the setting as it was back then. Wilder, more scifi, more power for the player to go nuts, and less survival mechanics. For a long time it lagged behind CDDA, but it has seen a surge of development and is a great alternative.<br>
-You can view their github with its links to their community here: https://github.com/cataclysmbn/Cataclysm-BN
 
-<h3>TLG - The Last Generation by WormGirl</h3>
-The newest branch, The Last Generation is seeing a lot of development and bug fixes, and seems to be positioning itself as a midway point between Dark Days and Bright Nights. It has a steam page just like Dark Days Ahead.<br>
-You can view their github with its links to their community here: https://github.com/Cataclysm-TLG/Cataclysm-TLG/
+<h3>TLG - <a href="https://github.com/Cataclysm-TLG/Cataclysm-TLG/">The Last Generation</a> by WormGirl</h3>
+The newest branch, The Last Generation is seeing a lot of development and bug fixes, and seems to be positioning itself as a midway point between Dark Days and Bright Nights. It has a steam page just like Dark Days Ahead and I don't know enough about it to mangle a description like I did for the others.<br>
 
 <p align="center">
     <img src="./data/screenshots/ultica-showcase-sep-2021.png" alt="Tileset: Ultica">

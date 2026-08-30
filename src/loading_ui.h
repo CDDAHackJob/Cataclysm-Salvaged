@@ -18,6 +18,11 @@ void show( const std::string &context, const std::string &step );
  *
  * Cheap to call and safe to call often: it rate-limits itself and does nothing
  * at all when no loading screen is up.
+ *
+ * Does nothing whatsoever in a curses build. The splash there is static text
+ * with no frames to advance, so a redraw would buy a terminal repaint and change
+ * nothing on screen. The declaration is deliberately shared rather than guarded,
+ * so the call sites inside loading steps need no #ifdef of their own.
  */
 void tick();
 void done();

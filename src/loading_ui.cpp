@@ -1,21 +1,24 @@
 #include "loading_ui.h"
 
 #include <algorithm>
-#include <chrono>
-#include <memory>
-#include <numeric>
 #include <vector>
 
 #include "cached_options.h"
-#include "cata_scope_helpers.h"
 #include "input.h"
 #include "output.h"
 #include "ui_manager.h"
 
+// Everything below is for the animated splash, which is a tiles-only feature.
+// The curses splash is static text - see the note on tick() in loading_ui.h.
 #if defined(TILES)
+#include <chrono>
+#include <memory>
+#include <numeric>
+
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui/imgui.h"
 #undef IMGUI_DEFINE_MATH_OPERATORS
+#include "cata_scope_helpers.h"
 #include "mod_manager.h"
 #include "path_info.h"
 #include "sdltiles.h"
@@ -73,21 +76,24 @@ struct ui_state {
 #endif
     std::string context;
     std::string step;
+#ifdef TILES
+    // Pacing for tick(), which does nothing on the curses side - see loading_ui.h.
     std::chrono::steady_clock::time_point last_present;
     // How often tick() is willing to redraw.
     // Taken from the art file once it is loaded - see set_present_interval
     int present_interval_ms = 50;
+#endif
 };
 
 static ui_state *gLUI = nullptr;
 
+#ifdef TILES
 // Bounds on the redraw interval derived in set_present_interval.
 // The base is a little over one frame at 60Hz,
 // since redrawing faster than the display cannot show anything.
 static constexpr int MIN_PRESENT_INTERVAL_MS = 8;
 static constexpr int MAX_PRESENT_INTERVAL_MS = 50;
 
-#ifdef TILES
 /**
  * Choose how often to redraw, from the animation that was actually loaded.
  *
@@ -339,7 +345,9 @@ static void present()
     if( gLUI == nullptr ) {
         return;
     }
+#ifdef TILES
     gLUI->last_present = std::chrono::steady_clock::now();
+#endif
     ui_manager::redraw();
     refresh_display();
     inp_mngr.pump_events();
@@ -356,6 +364,7 @@ void loading_ui::show( const std::string &context, const std::string &step )
 
 void loading_ui::tick()
 {
+#ifdef TILES
     // Nothing to interrupt if no loading screen is up.
     if( test_mode || gLUI == nullptr ) {
         return;
@@ -379,6 +388,7 @@ void loading_ui::tick()
         return;
     }
     present();
+#endif // TILES
 }
 
 void loading_ui::done()

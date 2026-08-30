@@ -54,6 +54,7 @@
 #include "input.h"
 #include "json.h"
 #include "line.h"
+#include "loading_ui.h"
 #include "map.h"
 #include "map_extras.h"
 #include "mapbuffer.h"
@@ -3811,6 +3812,18 @@ void input_manager::pump_events()
 
     last_input = input_event();
     previously_pressed_key = 0;
+
+    // This is already the tree's idiom for "I am inside a long loop, yield" -
+    // mapgen, tileset loading and recipe finalization all call it for that
+    // reason. Draining the event queue is only half of what those loops need
+    // though: it stops the window being marked unresponsive, but never redraws,
+    // so the loading screen stays frozen for the whole step. Ticking here gives
+    // every existing yield point a redraw without adding call sites.
+    //
+    // Safe against the loop this creates - tick() presents, and presenting pumps
+    // events again - because tick() stamps its rate limit before redrawing, so
+    // the re-entrant call is inside the interval and returns immediately.
+    loading_ui::tick();
 }
 
 // This is how we're actually going to handle input events, SDL getch

@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "cached_options.h"
+#include "cata_scope_helpers.h"
 #include "input.h"
 #include "output.h"
 #include "ui_manager.h"
@@ -59,8 +60,7 @@ struct ui_state {
     background_pane *bg;
 #ifdef TILES
     ImVec2 splash_size;
-    // One entry per frame, with the time each is shown. A still image is the
-    // same thing with a single frame, so redraw() has only one path to walk.
+    // One entry per frame, with the time each is shown.
     std::vector<SDL_Texture_Ptr> splash_frames;
     std::vector<int> splash_delays;
     int splash_loop_ms = 0;
@@ -73,9 +73,77 @@ struct ui_state {
 #endif
     std::string context;
     std::string step;
+    std::chrono::steady_clock::time_point last_present;
+    // How often tick() is willing to redraw.
+    // Taken from the art file once it is loaded - see set_present_interval
+    int present_interval_ms = 50;
 };
 
 static ui_state *gLUI = nullptr;
+
+// Bounds on the redraw interval derived in set_present_interval.
+// The base is a little over one frame at 60Hz,
+// since redrawing faster than the display cannot show anything.
+static constexpr int MIN_PRESENT_INTERVAL_MS = 8;
+static constexpr int MAX_PRESENT_INTERVAL_MS = 50;
+
+#ifdef TILES
+/**
+ * Choose how often to redraw, from the animation that was actually loaded.
+ *
+ * Sampling a frame sequence at its own period is the one interval guaranteed to
+ * look wrong: each frame gets one sample at best, and any jitter drops it
+ * outright. Frames long enough to span several samples survive that, short ones
+ * do not, so an animation with mixed timings skips only in its fast passages.
+ * Halving the shortest frame gives every frame at least two chances to be drawn.
+ */
+static void set_present_interval()
+{
+    int shortest = MAX_PRESENT_INTERVAL_MS;
+    for( const int d : gLUI->splash_delays ) {
+        if( d > 0 && d < shortest ) {
+            shortest = d;
+        }
+    }
+    gLUI->present_interval_ms = std::max( MIN_PRESENT_INTERVAL_MS,
+                                          std::min( MAX_PRESENT_INTERVAL_MS, shortest / 2 ) );
+}
+#endif // TILES
+
+#ifdef TILES
+/**
+ * Turn vsync off for the duration of the load, and back on afterwards.
+ *
+ * The renderer is created with SDL_RENDERER_PRESENTVSYNC, so every present waits
+ * for the next vertical blank. Measured on a real load that is a median of 16ms
+ * per present - a full refresh, every time - which is the right trade for the
+ * game and the wrong one for a loading screen. Redrawing often enough to keep an
+ * animation alive would otherwise cost about a third of the time of every step it
+ * runs inside. Tearing on a splash costs nothing.
+ *
+ * This must be undone whenever the loading screen goes away, including when it
+ * goes away because a load threw - leaving it off would run the rest of the
+ * session unsynced with nothing to indicate why. That path is covered without
+ * extra work: game.cpp catches a failed load and reports it with debugmsg, and
+ * realDebugmsg calls loading_ui::done() to get the splash off the screen before
+ * it prompts.
+ *
+ * SDL_RenderSetVSync arrived in SDL 2.0.18. On anything older this does nothing
+ * and redraws simply keep costing a refresh each.
+ */
+static void set_loading_vsync( const bool on )
+{
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+    const SDL_Renderer_Ptr &renderer = get_sdl_renderer();
+    if( renderer ) {
+        // A software renderer has no vsync to set and will fail here.
+        SDL_RenderSetVSync( renderer.get(), on ? 1 : 0 );
+    }
+#else
+    static_cast<void>( on );
+#endif
+}
+#endif // TILES
 
 #ifdef TILES
 static SDL_Texture *current_splash_frame()
@@ -108,9 +176,8 @@ static SDL_Texture *current_splash_frame()
 static void redraw()
 {
 #ifdef TILES
-    // Fit the splash to the window rather than drawing it at native size. The
-    // stock 1365x1024 asset asks for a window far larger than the 640x384 a
-    // default 80x24 terminal gives, so most of it simply falls off screen.
+    // Fit the splash to the window rather than drawing it at native size.
+    // old splash was too big and shoved progress bar off screen
     const ImVec2 viewport = ImGui::GetMainViewport()->Size;
     const float text_h = 2.0f * ImGui::GetTextLineHeightWithSpacing();
     // The window's usable area is its size less WindowPadding on each side, so
@@ -122,9 +189,8 @@ static void redraw()
         const float avail_x = std::max( viewport.x * 0.98f - pad.x * 2.0f, 1.0f );
         const float avail_y = std::max( viewport.y * 0.98f - pad.y * 2.0f - text_h, 1.0f );
         const float fit = std::min( avail_x / img.x, avail_y / img.y );
-        // Enlarging snaps to a whole factor so nearest-neighbour keeps the pixel
-        // grid even; shrinking takes the exact factor, where unevenness does not
-        // show. Recomputed every frame, so it follows a window resize.
+        // Enlarging snaps image to grid to keep it even, shrinking unneeded
+        // recalulated each frame in case of resize
         const float scale = fit >= 1.0f ? static_cast<float>( static_cast<int>( fit ) ) : fit;
         img = { img.x * scale, img.y * scale };
     }
@@ -138,10 +204,8 @@ static void redraw()
                       ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings ) ) {
         ImGui::Image( static_cast<void *>( current_splash_frame() ), img );
-        // Clamp: the offset assumes the progress line is about 240px wide, which
-        // held when the splash always drew at 1365px. A scaled-down image can be
-        // narrower than that, and a negative cursor puts the text outside the
-        // content region, where it is clipped away entirely.
+        // extra stuff to make sure an image smaller than the progress bar
+        // doesn't cause issues and shove the text offscreen via negative cursor
         ImGui::SetCursorPosX( std::max( ( img.x / 2.0f ) - 120.0f, 0.0f ) );
         ImGui::TextUnformatted( gLUI->context.c_str() );
         ImGui::SameLine();
@@ -151,8 +215,8 @@ static void redraw()
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
 #else
-    // Clamp: art wider than the terminal would give a negative x, and
-    // print_colored_text silently skips its wmove when x is negative.
+    // art wider than the terminal would give a negative x,
+    // then print_colored_text skips its wmove
     int x = std::max( 0, ( TERMX - gLUI->splash_width ) / 2 );
     int y = 0;
     nc_color white = c_white;
@@ -177,6 +241,9 @@ static void update_state( const std::string &context, const std::string &step )
 {
     if( gLUI == nullptr ) {
         gLUI = new struct ui_state;
+#ifdef TILES
+        set_loading_vsync( false );
+#endif
         gLUI->bg = new background_pane;
         gLUI->ui = new ui_adaptor;
         gLUI->ui->is_imgui = true;
@@ -201,7 +268,7 @@ static void update_state( const std::string &context, const std::string &step )
         }
         if( gLUI->chosen_load_img == cata_path() ) {
             if( imgs.empty() ) {
-                gLUI->chosen_load_img = PATH_INFO::gfxdir() / "testgif2.gif"; //default load screen
+                gLUI->chosen_load_img = PATH_INFO::gfxdir() / "splash-animated.gif"; //default load screen
             } else {
                 gLUI->chosen_load_img = random_entry( imgs );
             }
@@ -209,9 +276,9 @@ static void update_state( const std::string &context, const std::string &step )
         const std::string img_path = gLUI->chosen_load_img.get_unrelative_path().u8string();
         gLUI->splash_start = std::chrono::steady_clock::now();
 #if CATA_LOADING_ANIMATION
-        // An animated splash, if this is one and this SDL_image can read it.
-        // A still image fails this by design rather than by error, so the SDL
-        // error is cleared afterwards to keep it off whatever fails next.
+        // Animated splash meant to be gif for SDL
+        // A still image would generate an error so we erase it
+        // so that if something else fails its not blocked by the still.
         IMG_Animation_Ptr anim( IMG_LoadAnimation( img_path.c_str() ) );
         if( anim && anim->count > 0 && anim->frames && anim->delays ) {
             gLUI->splash_size = { static_cast<float>( anim->w ), static_cast<float>( anim->h ) };
@@ -219,19 +286,13 @@ static void update_state( const std::string &context, const std::string &step )
                 SDL_Texture_Ptr frame( SDL_CreateTextureFromSurface( get_sdl_renderer().get(),
                                        anim->frames[i] ) );
                 if( !frame ) {
-                    // A long animation at full screen size is a lot of texture memory -
-                    // 24 frames of 1362x1020 is over 130MB - so running out part way
-                    // through is a real possibility. Drop back to the still image
-                    // rather than showing a truncated loop.
+                    // animation should be a small gif but just in case have a fallback
+                    // if we would run out of texture memory, fall back to still image
                     gLUI->splash_frames.clear();
                     gLUI->splash_delays.clear();
                     break;
                 }
-                // Taken as reported and not second-guessed. SDL_image has already
-                // applied the GIF convention that a delay under 20ms means 100ms,
-                // so these are not always the numbers in the file - a frame
-                // authored at 10ms arrives here as 100ms. Clamping again on top of
-                // that would only distort timing further.
+                // SDL_image forces pauses in gifs of <20ms to 100ms
                 gLUI->splash_delays.push_back( std::max( 0, anim->delays[i] ) );
                 gLUI->splash_frames.emplace_back( std::move( frame ) );
             }
@@ -249,6 +310,7 @@ static void update_state( const std::string &context, const std::string &step )
         // first frame instead of dividing by it.
         gLUI->splash_loop_ms = std::accumulate( gLUI->splash_delays.begin(),
                                                 gLUI->splash_delays.end(), 0 );
+        set_present_interval();
         // No window size is cached here any more: redraw() derives it from the
         // viewport each frame, so the splash follows a resize.
 #else
@@ -270,21 +332,60 @@ static void update_state( const std::string &context, const std::string &step )
     gLUI->step = std::string( step );
 }
 
+static void present()
+{
+    // take timestamp early so redraw cannot cause issues
+    // from debugmsg's that would remove gLUI
+    if( gLUI == nullptr ) {
+        return;
+    }
+    gLUI->last_present = std::chrono::steady_clock::now();
+    ui_manager::redraw();
+    refresh_display();
+    inp_mngr.pump_events();
+}
+
 void loading_ui::show( const std::string &context, const std::string &step )
 {
     if( test_mode ) {
         return;
     }
     update_state( context, step );
-    ui_manager::redraw();
-    refresh_display();
-    inp_mngr.pump_events();
+    present();
+}
+
+void loading_ui::tick()
+{
+    // Nothing to interrupt if no loading screen is up.
+    if( test_mode || gLUI == nullptr ) {
+        return;
+    }
+    // Presenting pumps events, pumping events ticks, so this re-enters once.
+    // dont want to rely on the rate limit to stop it.
+    static bool in_tick = false;
+    if( in_tick ) {
+        return;
+    }
+    const on_out_of_scope clear_in_tick( [] {
+        in_tick = false;
+    } );
+    in_tick = true;
+    // A present is not free, so this is capped.
+    // The interval comes from the loaded animation - see set_present_interval
+    // and is half its shortest frame because sampling at the frame period
+    // drops frames whenever the timing jitters.
+    const auto now = std::chrono::steady_clock::now();
+    if( now - gLUI->last_present < std::chrono::milliseconds( gLUI->present_interval_ms ) ) {
+        return;
+    }
+    present();
 }
 
 void loading_ui::done()
 {
     if( gLUI != nullptr ) {
 #ifdef TILES
+        set_loading_vsync( true );
         gLUI->chosen_load_img = cata_path();
 #endif
         delete gLUI->ui;

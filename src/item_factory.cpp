@@ -37,6 +37,7 @@
 #include "item_contents.h"
 #include "item_group.h"
 #include "iuse_actor.h"
+#include "loading_ui.h"
 #include "material.h"
 #include "options.h"
 #include "pocket_type.h"
@@ -1408,10 +1409,12 @@ void Item_factory::finalize()
     for( auto &e : m_templates ) {
         finalize_pre( e.second );
         register_cached_uses( e.second );
+        loading_ui::tick();
     }
 
     for( auto &e : m_templates ) {
         finalize_post( e.second );
+        loading_ui::tick();
     }
 
     // We may actually have some runtimes here - ones loaded from saved game

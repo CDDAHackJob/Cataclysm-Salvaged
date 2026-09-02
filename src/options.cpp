@@ -195,7 +195,14 @@ static const std::map<std::string, std::pair<std::string, std::map<std::string, 
 &get_migrated_options()
 {
     static const std::map<std::string, std::pair<std::string, std::map<std::string, std::string>>> opt
-    = { {"DELETE_WORLD", { "WORLD_END", { {"no", "keep" }, {"yes", "delete"} } } } };
+    = {
+        {"DELETE_WORLD", { "WORLD_END", { {"no", "keep" }, {"yes", "delete"} } } },
+        // "true" maps to the new default, not to "ascii": options serialize in
+        // full, so every existing options.json carries it and mapping it to the
+        // look-alike state would keep the new default from reaching anyone.
+        // "false" is a real preference - logo off on purpose - so it keeps text.
+        {"ENABLE_ASCII_TITLE", { "TITLE_SCREEN", { {"true", "animated" }, {"false", "text"} } } }
+    };
     return opt;
 }
 
@@ -2296,24 +2303,30 @@ void options_manager::add_options_graphics()
     add_option_group( "graphics", Group( "ascii_opts", to_translation( "ASCII Graphic Options" ),
                                          to_translation( "Options regarding ASCII graphic." ) ),
     [&]( const std::string & page_id ) {
-        add( "ENABLE_ASCII_TITLE", page_id,
-             to_translation( "Enable ASCII art on the title screen" ),
-             to_translation( "If true, shows an ASCII graphic on the title screen.  If false, shows a text-only title screen." ),
-             true
-           );
+        add( "TITLE_SCREEN", page_id,
+             to_translation( "Title screen" ),
+             to_translation( "What sits above the main menu.  \"Text only\" is the game's name on a single line.  \"ASCII art\" draws the logo.  \"Animated\" replaces the logo with an image or animation behind the whole menu, and falls back to the ASCII art in a text-only build, which has nothing to draw it with." ),
+             //~ Title screen shows the game's name as one line of plain text.
+        {   { "text", to_translation( "Text only" ) },
+            //~ Title screen shows a logo drawn out of ASCII characters.
+            { "ascii", to_translation( "ASCII art" ) },
+            //~ Title screen shows a picture or animation behind the menu.
+            { "animated", to_translation( "Animated" ) }
+        },
+        "animated" );
 
         add( "SEASONAL_TITLE", page_id, to_translation( "Use seasonal title screen" ),
              to_translation( "If true, the title screen will use the art appropriate for the season." ),
              true
            );
 
-        get_option( "SEASONAL_TITLE" ).setPrerequisite( "ENABLE_ASCII_TITLE" );
+        get_option( "SEASONAL_TITLE" ).setPrerequisite( "TITLE_SCREEN", "ascii" );
 
         add( "ALT_TITLE", page_id, to_translation( "Alternative title screen frequency" ),
              to_translation( "Set the probability of the alternate title screen appearing." ), 0, 100, 10
            );
 
-        get_option( "ALT_TITLE" ).setPrerequisite( "ENABLE_ASCII_TITLE" );
+        get_option( "ALT_TITLE" ).setPrerequisite( "TITLE_SCREEN", "ascii" );
     } );
 
     add_empty_line();

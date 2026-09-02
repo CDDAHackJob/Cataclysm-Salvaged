@@ -1,15 +1,18 @@
 #include "loading_ui.h"
 
 #include <algorithm>
+#include <optional>
 #include <vector>
 
 #include "cached_options.h"
 #include "input.h"
 #include "output.h"
+#include "string_formatter.h"
+#include "text_snippets.h"
+#include "translations.h"
 #include "ui_manager.h"
 
-// Everything below is for the animated splash, which is a tiles-only feature.
-// The curses splash is static text - see the note on tick() in loading_ui.h.
+// Animated splash is tiles-only. Curses keeps the static text splash.
 #if defined(TILES)
 #include <chrono>
 #include <memory>
@@ -18,6 +21,7 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui/imgui.h"
 #undef IMGUI_DEFINE_MATH_OPERATORS
+#include "cata_imgui.h"
 #include "cata_scope_helpers.h"
 #include "mod_manager.h"
 #include "path_info.h"
@@ -76,8 +80,11 @@ struct ui_state {
 #endif
     std::string context;
     std::string step;
+    // Built once when screen is created, empty if no tip was available
+    // The tip is picked on game startup, cleared by loading a world.
+    std::string tip;
 #ifdef TILES
-    // Pacing for tick(), which does nothing on the curses side - see loading_ui.h.
+    // Pacing for tick().
     std::chrono::steady_clock::time_point last_present;
     // How often tick() is willing to redraw.
     // Taken from the art file once it is loaded - see set_present_interval
@@ -160,11 +167,8 @@ static SDL_Texture *current_splash_frame()
     if( gLUI->splash_frames.size() == 1 || gLUI->splash_loop_ms <= 0 ) {
         return gLUI->splash_frames.front().get();
     }
-    // The frame comes from the clock, not from a counter that advances once per
-    // redraw. Redraws happen when a load step finishes, which is irregular and
-    // occasionally seconds apart, so a counter would play the animation at the
-    // speed of the loading instead of the speed it was authored at. Going by
-    // elapsed time means a slow step drops frames rather than stretching them.
+    // Redrawing doesn't work well normally becaue it only happens
+    // when a loading step finishes. So we have the frame go by clock.
     const auto elapsed = std::chrono::steady_clock::now() - gLUI->splash_start;
     int ms = static_cast<int>(
                  std::chrono::duration_cast<std::chrono::milliseconds>( elapsed ).count()
@@ -216,6 +220,12 @@ static void redraw()
         ImGui::TextUnformatted( gLUI->context.c_str() );
         ImGui::SameLine();
         ImGui::TextUnformatted( gLUI->step.c_str() );
+        // tip of the day, centered on the loading image width.
+        if( !gLUI->tip.empty() ) {
+            const float tip_w = ImGui::CalcTextSize( remove_color_tags( gLUI->tip ).c_str() ).x;
+            ImGui::SetCursorPosX( std::max( ( img.x - tip_w ) * 0.5f, 0.0f ) );
+            cataimgui::draw_colored_text( gLUI->tip, c_light_cyan );
+        }
     }
     ImGui::End();
     ImGui::PopStyleColor();
@@ -233,6 +243,11 @@ static void redraw()
         print_colored_text( catacurses::stdscr, point( x, y++ ), white,
                             white, line );
     }
+    // Just above the progress line, which is pinned to the last row.
+    if( !gLUI->tip.empty() ) {
+        mvwprintz( catacurses::stdscr, point( 0, TERMY - 2 ), c_black, gLUI->blanks );
+        center_print( catacurses::stdscr, TERMY - 2, c_light_cyan, gLUI->tip );
+    }
     mvwprintz( catacurses::stdscr, point( 0, TERMY - 1 ), c_black, gLUI->blanks );
     center_print( catacurses::stdscr, TERMY - 1, c_white, string_format( "%s %s",
                   gLUI->context.c_str(), gLUI->step.c_str() ) );
@@ -247,6 +262,10 @@ static void update_state( const std::string &context, const std::string &step )
 {
     if( gLUI == nullptr ) {
         gLUI = new struct ui_state;
+        // The tip of the day
+        if( const std::optional<translation> t = SNIPPET.random_from_category( "tip" ) ) {
+            gLUI->tip = string_format( _( "Tip of the day: %s" ), t->translated() );
+        }
 #ifdef TILES
         set_loading_vsync( false );
 #endif
@@ -317,8 +336,6 @@ static void update_state( const std::string &context, const std::string &step )
         gLUI->splash_loop_ms = std::accumulate( gLUI->splash_delays.begin(),
                                                 gLUI->splash_delays.end(), 0 );
         set_present_interval();
-        // No window size is cached here any more: redraw() derives it from the
-        // viewport each frame, so the splash follows a resize.
 #else
         std::string splash = read_whole_file( PATH_INFO::title( get_holiday_from_time() ) ).value_or(
                                  _( "Cataclysm: Salvaged" ) );

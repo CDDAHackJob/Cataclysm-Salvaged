@@ -31,13 +31,16 @@ class main_menu
         std::vector<std::string> vMenuItems; // MOTD, New Game, Load Game, etc.
         std::vector<std::string> vWorldSubItems;
         std::vector<std::string> vNewGameSubItems;
+        // These three belong to the stock horizontal layout only. See
+        // use_column_menu().
         std::vector<std::string> vNewGameHints;
+        std::string vdaytip; //tip of the day
+        int extra_w = 0;
         std::vector< std::vector<std::string> > vWorldHotkeys;
         std::vector<std::string> vSettingsSubItems;
         std::vector< std::vector<std::string> > vSettingsHotkeys;
         std::vector< std::vector<std::string> > vMenuHotkeys; // hotkeys for the vMenuItems
         std::vector< std::vector<std::string> > vNewGameHotkeys;
-        std::string vdaytip; //tip of the day
 
         /**
          * Does what it sounds like, but this function also exists in order to gracefully handle
@@ -74,10 +77,12 @@ class main_menu
         size_t last_world_pos = 0;
         int sub_opt_off = 0;
         point LAST_TERM;
+        // Layout the windows were last built for. In the init_windows() guard
+        // with LAST_TERM, since TITLE_SCREEN can change without a resize.
+        bool LAST_COLUMN = false;
         catacurses::window w_open;
         point menu_offset;
         std::vector<std::string> templates;
-        int extra_w = 0;
         std::vector<save_t> savegames;
         std::vector<std::pair<inclusive_rectangle<point>, std::pair<int, int>>> main_menu_sub_button_map;
         std::vector<std::pair<inclusive_rectangle<point>, int>> main_menu_button_map;
@@ -98,6 +103,15 @@ class main_menu
                                            point offset, int spacing = 1, bool main = false );
 
         /**
+         * Column layout: one item per row, labels flush right, marker in a gutter
+         * to their left. `spacing` is the row stride. Returns the row each item
+         * landed on, which is what positions the panel hanging off it.
+         */
+        std::vector<int> print_menu_items_column( const catacurses::window &w_in,
+                const std::vector<std::string> &vItems, size_t iSel,
+                point offset, int spacing = 1 );
+
+        /**
          * Called by @ref opening_screen, this prints all the text that you see on the main menu
          *
          * @param w_open Window to print menu in
@@ -106,9 +120,15 @@ class main_menu
          */
         void print_menu( const catacurses::window &w_open, int iSel, const point &offset, int sel_line );
 
-        void display_text( const std::string &text, const std::string &title, int &selected );
+        /** As display_sub_menu, but for the items whose panel is a wall of text. */
+        void display_text( const std::string &text, const std::string &title, int &selected,
+                           const point &anchor );
 
-        void display_sub_menu( int sel, const point &bottom_left, int sel_line );
+        /**
+         * Draw the panel belonging to the selected item. `anchor` is the panel's
+         * top-left in the column layout, its bottom-left in the stock one.
+         */
+        void display_sub_menu( int sel, const point &anchor, int sel_line );
 
         void init_windows();
 

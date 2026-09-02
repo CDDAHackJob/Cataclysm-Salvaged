@@ -71,6 +71,7 @@
 #include "sdl_gamepad.h"
 #include "sdlsound.h"
 #include "string_formatter.h"
+#include "terminal_backdrop.h"
 #include "uistate.h"
 #include "ui_manager.h"
 #include "wcwidth.h"
@@ -234,6 +235,10 @@ static bool SetupRenderTarget()
         return false;
     }
     ClearScreen();
+
+    // Canvas matches the draw buffer, so a fill is a rect copied onto itself.
+    terminal_backdrop::notify_render_target_size( WindowWidth / scaling_factor,
+            WindowHeight / scaling_factor );
 
     return true;
 }
@@ -1211,14 +1216,14 @@ static bool draw_window( Font_Ptr &font, const catacurses::window &w, const poin
             continue;
         }
 
-        // Although it would be simpler to clear the whole window at
-        // once, the code sometimes creates overlapping windows. By
-        // only clearing those lines that are touched, we avoid
-        // clearing lines that were already drawn in a previous
-        // window but are untouched in this one.
-        geometry->rect( renderer, point( win->pos.x * font->width, ( win->pos.y + j ) * font->height ),
-                        win->width * font->width, font->height,
+        // Clearing the whole window would be easier but sometimes
+        // there are overlapping windows, so only clear lines touched.
+        const point line_pos( win->pos.x * font->width, ( win->pos.y + j ) * font->height );
+        geometry->rect( renderer, line_pos, win->width * font->width, font->height,
                         color_as_sdl( catacurses::black ) );
+        // Draws over that black, leaving opaque regions alone. No-op unless a
+        // backdrop is active.
+        terminal_backdrop::fill( line_pos, win->width * font->width, font->height );
         update = true;
         win->line[j].touched = false;
         for( int i = 0; i < win->width; i++ ) {

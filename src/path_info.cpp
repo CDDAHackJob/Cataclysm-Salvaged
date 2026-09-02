@@ -10,6 +10,9 @@
 #include "options.h"
 #include "rng.h"
 #include "system_locale.h"
+#if defined(TILES)
+#include "terminal_backdrop.h"
+#endif // TILES
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -485,7 +488,20 @@ std::string PATH_INFO::title( const holiday current_holiday )
     std::string theme_extension = ".title";
     std::string theme_fallback = theme_basepath + "en.title";
 
-    if( !get_option<bool>( "ENABLE_ASCII_TITLE" ) ) {
+    // Returning the name instead of a path is the no-art signal: the caller's
+    // load_file() falls back to its alt_text when the "path" won't open.
+    const std::string mode = get_option<std::string>( "TITLE_SCREEN" );
+#if defined(TILES)
+    // A backdrop replaces the logo, but only if its art actually loaded - asking
+    // loaded() rather than the option is what keeps a missing file from leaving
+    // no logo AND no picture. main_menu loads it before init_strings() gets here.
+    const bool want_art = mode == "ascii" ||
+                          ( mode == "animated" && !terminal_backdrop::loaded() );
+#else
+    // No backdrop to replace it with, so "animated" keeps the logo.
+    const bool want_art = mode != "text";
+#endif
+    if( !want_art ) {
         return _( "Cataclysm: Salvaged" );
     }
 

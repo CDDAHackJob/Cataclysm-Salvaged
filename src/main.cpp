@@ -817,7 +817,8 @@ int main( int argc, const char *argv[] )
     // Override existing settings from cli  options
     if( cli.disable_ascii_art ) {
         get_options().get_option( "ENABLE_ASCII_ART" ).setValue( "false" );
-        get_options().get_option( "ENABLE_ASCII_TITLE" ).setValue( "false" );
+        // "text", not "animated": no ASCII art shouldn't opt you into a backdrop.
+        get_options().get_option( "TITLE_SCREEN" ).setValue( "text" );
     }
 
     if( cli.noverify ) {

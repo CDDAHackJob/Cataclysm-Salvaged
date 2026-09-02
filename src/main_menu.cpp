@@ -54,6 +54,10 @@
 
 #include "cata_imgui.h"
 #include "imgui/imgui.h"
+#if defined(TILES)
+#include "cuboid_rectangle.h"
+#include "terminal_backdrop.h"
+#endif // TILES
 
 class demo_ui : public cataimgui::window
 {
@@ -114,6 +118,36 @@ void demo_ui::run()
 }
 
 static const mod_id MOD_INFORMATION_dda( "dda" );
+
+// Menu column geometry. print_menu_items_column draws with it, print_menu hangs
+// the panel off it, and init_windows centres the column using the stride.
+
+// Fixed gutter for the selection marker. Labels are flush right, so a marker
+// travelling with them would jitter the column as the selection moved.
+static constexpr int MENU_MARKER_W = 2;
+// Rows per item: 2 leaves a blank line between them.
+static constexpr int MENU_ROW_STRIDE = 2;
+// Cells between the column's right edge and the panel hanging off it.
+static constexpr int MENU_PANEL_GAP = 2;
+
+/**
+ * Whether the menu uses the column-down-the-left layout, which exists to sit in
+ * the pillarbox beside the backdrop. The ASCII and text titles have no picture
+ * to lay out around, so they keep the stock strip along the bottom. Curses is
+ * always stock.
+ */
+static bool use_column_menu()
+{
+#if defined(TILES)
+    // loaded(), not just the option - the same question PATH_INFO::title() asks,
+    // so a missing art file falls back the title and the layout together. Only
+    // one of the two falling back gives a hybrid neither layout was designed for.
+    return get_option<std::string>( "TITLE_SCREEN" ) == "animated" &&
+           terminal_backdrop::loaded();
+#else
+    return false;
+#endif
+}
 
 enum class main_menu_opts : int {
     MOTD = 0,
@@ -223,7 +257,46 @@ std::vector<int> main_menu::print_menu_items( const catacurses::window &w_in,
     return ret;
 }
 
-void main_menu::display_sub_menu( int sel, const point &bottom_left, int sel_line )
+std::vector<int> main_menu::print_menu_items_column( const catacurses::window &w_in,
+        const std::vector<std::string> &vItems,
+        size_t iSel, point offset, int spacing )
+{
+    const point win_offset( getbegx( w_in ), getbegy( w_in ) );
+    std::vector<int> ret;
+
+    // Longest label sets the field every label is flush-right against. Measured
+    // unselected; the selected form differs only in colour, which has no width.
+    int field = 0;
+    for( const std::string &item : vItems ) {
+        field = std::max( field, utf8_width_notags( shortcut_text( c_yellow, item ).c_str() ) );
+    }
+
+    for( size_t i = 0; i < vItems.size(); ++i ) {
+        const bool sel = iSel == i;
+        const std::string label = colorize( shortcut_text( sel ? hilite( c_yellow ) : c_yellow,
+                                            vItems[i] ), sel ? hilite( c_white ) : c_white );
+        const int y = offset.y + static_cast<int>( i ) * spacing;
+        // Right-aligned in the field, which starts after the marker gutter.
+        const int pad = field - utf8_width_notags( label.c_str() );
+        if( sel ) {
+            trim_and_print( w_in, point( offset.x, y ), MENU_MARKER_W, c_yellow, ">" );
+        }
+        trim_and_print( w_in, point( offset.x + MENU_MARKER_W + pad, y ), field - pad,
+                        c_white, label );
+        // Whole row is the click target, gutter included: with labels flush
+        // right, the gap left of a short one still reads as part of that row.
+        main_menu_button_map.emplace_back(
+            inclusive_rectangle<point>( win_offset + point( offset.x, y ),
+                                        win_offset + point( offset.x + MENU_MARKER_W + field - 1, y ) ),
+            static_cast<int>( i ) );
+        // Rows, not x offsets: this is what positions the panel hanging off it.
+        ret.push_back( y );
+    }
+
+    return ret;
+}
+
+void main_menu::display_sub_menu( int sel, const point &anchor, int sel_line )
 {
     main_menu_sub_button_map.clear();
     std::vector<std::string> sub_opts;
@@ -231,11 +304,11 @@ void main_menu::display_sub_menu( int sel, const point &bottom_left, int sel_lin
     main_menu_opts sel_o = static_cast<main_menu_opts>( sel );
     switch( sel_o ) {
         case main_menu_opts::CREDITS:
-            display_text( mmenu_credits, _( "Credits" ), sel_line );
+            display_text( mmenu_credits, _( "Credits" ), sel_line, anchor );
             return;
         case main_menu_opts::MOTD:
             //~ Message Of The Day
-            display_text( mmenu_motd, _( "MOTD" ), sel_line );
+            display_text( mmenu_motd, _( "MOTD" ), sel_line, anchor );
             return;
         case main_menu_opts::SETTINGS:
             for( int i = 0; static_cast<size_t>( i ) < vSettingsSubItems.size(); ++i ) {
@@ -291,46 +364,115 @@ void main_menu::display_sub_menu( int sel, const point &bottom_left, int sel_lin
         return;
     }
 
-    point top_left( bottom_left + point( 0, -( sub_opts.size() + 1 ) ) );
+    // Read once: this function sizes, positions and labels the panel, and those
+    // must not answer differently.
+    const bool column = use_column_menu();
+
+    // Only the column layout needs the hint: UP/DOWN walks the menu there, so a
+    // vertical list is worked with LEFT/RIGHT, which nothing suggests. Asks for
+    // the bound keys rather than saying "left" and "right", which rebinding
+    // would falsify.
+    std::string sub_hint;
+    if( column ) {
+        sub_hint = string_format( _( "[<color_yellow>%s</color>/<color_yellow>%s</color>] select" ),
+                                  ctxt.get_desc( "LEFT" ), ctxt.get_desc( "RIGHT" ) );
+        // Panel is xlen + 4 with the title inside the border, so xlen must reach
+        // hint - 2 to keep the hint. Capped by the room to the right edge, which
+        // also truncates a long world name rather than running off screen; the
+        // hint is dropped if it still will not fit.
+        const int hint_w = utf8_width( sub_hint, true );
+        const int room = std::max( 0, TERMX - anchor.x - 4 );
+        xlen = std::min( std::max( xlen, hint_w - 2 ), room );
+        if( hint_w > xlen + 2 ) {
+            sub_hint.clear();
+        }
+    }
 
     // If sel2 somehow outgrew the options vector, clamp it back.
     sel2 = std::min<int>( sel2, sub_opts.size() );
 
     int height = sub_opts.size();
-    if( top_left.y < 0 ) {
-        // Options don't fit screen. Decrease height till they do.
-        height += top_left.y;
-        top_left.y = 0;
+    point top_left;
 
-        // Calculate an offset from which to draw the options
-        if( sel2 - 1 < sub_opt_off ) {
-            // Trying to go below the showed options, decrease our offset
-            sub_opt_off = sel2;
-        } else if( sel2 + 1 > sub_opt_off + height ) {
-            // We are going over the list the other way around - increase offset
-            sub_opt_off = sel2 - height + 1;
+    if( column ) {
+        // Anchor is the top-left: right of the column, level with its row.
+        top_left = anchor;
+
+        // Short lists hang below the row; long ones (saves, worlds) open upward
+        // too, so they get the whole screen height rather than what is below.
+        if( height + 2 > TERMY ) {
+            // Taller than the screen even so. Full height, scroll inside it -
+            // the only case that loses rows.
+            top_left.y = 0;
+            height = std::max( 1, TERMY - 2 );
+
+            // Calculate an offset from which to draw the options
+            if( sel2 - 1 < sub_opt_off ) {
+                // Trying to go below the showed options, decrease our offset
+                sub_opt_off = sel2;
+            } else if( sel2 + 1 > sub_opt_off + height ) {
+                // We are going over the list the other way around - increase offset
+                sub_opt_off = sel2 - height + 1;
+            }
+        } else {
+            if( top_left.y + height + 2 > TERMY ) {
+                // Will not hang below the row, so open both ways: centred on the
+                // item, then pushed inside the screen. Centring rather than
+                // bottom-aligning keeps the panel next to its row.
+                top_left.y = clamp( anchor.y - ( height + 2 ) / 2, 0, TERMY - ( height + 2 ) );
+            }
+            // Options fit the screen, no offset required.
+            sub_opt_off = 0;
         }
     } else {
-        // Options fit the screen, no offset required.
-        sub_opt_off = 0;
+        // Stock layout: anchor is a bottom-left corner, panel grows upward.
+        top_left = anchor + point( 0, -( static_cast<int>( sub_opts.size() ) + 1 ) );
+
+        if( top_left.y < 0 ) {
+            // Options don't fit screen. Decrease height till they do.
+            height += top_left.y;
+            top_left.y = 0;
+
+            // Calculate an offset from which to draw the options
+            if( sel2 - 1 < sub_opt_off ) {
+                // Trying to go below the showed options, decrease our offset
+                sub_opt_off = sel2;
+            } else if( sel2 + 1 > sub_opt_off + height ) {
+                // We are going over the list the other way around - increase offset
+                sub_opt_off = sel2 - height + 1;
+            }
+        } else {
+            // Options fit the screen, no offset required.
+            sub_opt_off = 0;
+        }
     }
 
     catacurses::window w_sub = catacurses::newwin( height + 2, xlen + 4, top_left );
+#if defined(TILES)
+    // Keep the black behind it so hotkeys stay legible over any backdrop.
+    terminal_backdrop::set_opaque_cells( top_left, xlen + 4, height + 2 );
+#endif // TILES
     werase( w_sub );
-    draw_border( w_sub, c_white );
+    draw_border( w_sub, c_white, sub_hint );
 
     // Print as many options as decided previously, starting from the index sub_opt_offset
     for( int y = 0; y < height; y++ ) {
         int opt_index = sub_opt_off + y;
         bool is_selection = sel2 == opt_index;
         std::string opt = ( is_selection ? "» " : "  " ) + sub_opts[opt_index];
-        int padding = ( xlen + 2 ) - utf8_width( opt, true );
+        // Never negative: xlen is capped to the room beside the column, so it can
+        // be narrower than the widest option, and append() would read a negative
+        // count as an enormous unsigned one. trim_and_print does the truncating.
+        int padding = std::max( 0, ( xlen + 2 ) - utf8_width( opt, true ) );
         opt.append( padding, ' ' );
         nc_color clr = is_selection ? hilite( c_white ) : c_white;
         trim_and_print( w_sub, point( 1, y + 1 ), xlen + 2, clr, opt );
         inclusive_rectangle<point> rec( top_left + point( 1, y  + 1 ),
                                         top_left + point( xlen + 2, y + 1 ) );
-        main_menu_sub_button_map.emplace_back( rec, std::pair<int, int> { sel, y } );
+        // The option index, not the screen row: the click handler assigns this
+        // straight to sel2, so a scrolled list would otherwise select the entry
+        // sub_opt_off places above the one clicked.
+        main_menu_sub_button_map.emplace_back( rec, std::pair<int, int> { sel, opt_index } );
     }
     if( static_cast<size_t>( height ) != sub_opts.size() ) {
         draw_scrollbar( w_sub, sel2, height, sub_opts.size(), point_south, c_white,
@@ -344,6 +486,18 @@ void main_menu::print_menu( const catacurses::window &w_open, int iSel, const po
 {
     main_menu_button_map.clear();
 
+#if defined(TILES)
+    // Scoped to the menu DRAWING, not to whoever asked for it. A nested screen
+    // positioning its window invalidates every UI its rect overlaps, so the menu
+    // below repaints as part of that screen's redraw - and with the enable at
+    // the call site instead, those repaints dropped the backdrop and the picture
+    // vanished until the menu regained control. Screens drawn on top stay
+    // outside this scope, so they keep their own opaque black.
+    const terminal_backdrop::scoped_enable backdrop;
+    // Whatever popup draws this frame claims its own region below.
+    terminal_backdrop::clear_opaque_cells();
+#endif // TILES
+
     // Clear Lines
     werase( w_open );
 
@@ -351,25 +505,35 @@ void main_menu::print_menu( const catacurses::window &w_open, int iSel, const po
     int window_width = getmaxx( w_open );
     int window_height = getmaxy( w_open );
 
-    // Draw horizontal line
-    for( int i = 1; i < window_width - 1; ++i ) {
-        mvwputch( w_open, point( i, window_height - 4 ), c_white, LINE_OXOX );
-    }
+    const bool column = use_column_menu();
 
-    if( iSel == getopt( main_menu_opts::NEWCHAR ) ) {
-        center_print( w_open, window_height - 2, c_yellow, vNewGameHints[sel2] );
-    } else {
-        center_print( w_open, window_height - 2, c_red,
-                      _( "Bugs?  Suggestions?  Use links in MOTD to report them." ) );
-    }
+    // Rule, hint line and tip belong to the stock bottom strip. The column has
+    // no room for them; its tip lives on the loading screen instead.
+    if( !column ) {
+        // Draw horizontal line
+        for( int i = 1; i < window_width - 1; ++i ) {
+            mvwputch( w_open, point( i, window_height - 4 ), c_white, LINE_OXOX );
+        }
 
-    center_print( w_open, window_height - 1, c_light_cyan, string_format( _( "Tip of the day: %s" ),
-                  vdaytip ) );
+        if( iSel == getopt( main_menu_opts::NEWCHAR ) ) {
+            center_print( w_open, window_height - 2, c_yellow, vNewGameHints[sel2] );
+        } else {
+            center_print( w_open, window_height - 2, c_red,
+                          _( "Bugs?  Suggestions?  Use links in MOTD to report them." ) );
+        }
+
+        center_print( w_open, window_height - 1, c_light_cyan,
+                      string_format( _( "Tip of the day: %s" ), vdaytip ) );
+    }
 
     int iLine = 0;
     const int iOffsetX = ( window_width - FULL_SCREEN_WIDTH ) / 2;
 
-    if( get_option<bool>( "SEASONAL_TITLE" ) ) {
+    // Only when the title is actually art - mmenu_title is one line in the text
+    // and animated modes, where this corner art would float on a bare screen or
+    // land on the backdrop. The SEASONAL_TITLE prerequisite does not cover it:
+    // that only greys the options row, it does not change getValue().
+    if( mmenu_title.size() > 1 && get_option<bool>( "SEASONAL_TITLE" ) ) {
         switch( current_holiday ) {
             case holiday::new_year:
             case holiday::easter:
@@ -388,41 +552,87 @@ void main_menu::print_menu( const catacurses::window &w_open, int iSel, const po
         }
     }
 
-    if( mmenu_title.size() > 1 ) {
-        for( const std::string &i_title : mmenu_title ) {
-            nc_color cur_color = c_white;
-            nc_color base_color = c_white;
-            print_colored_text( w_open, point( iOffsetX, iLine++ ), cur_color, base_color, i_title );
+#if defined(TILES)
+    // The picture is the identity, so the name and version give way rather than
+    // sit on top of the art. Version moves to the MOTD, see init_strings().
+    const bool overlay_text = !terminal_backdrop::active();
+#else
+    const bool overlay_text = true;
+#endif // TILES
+    if( overlay_text ) {
+        if( mmenu_title.size() > 1 ) {
+            for( const std::string &i_title : mmenu_title ) {
+                nc_color cur_color = c_white;
+                nc_color base_color = c_white;
+                print_colored_text( w_open, point( iOffsetX, iLine++ ), cur_color, base_color, i_title );
+            }
+        } else {
+            center_print( w_open, iLine++, c_light_cyan, mmenu_title[0] );
         }
+
+        iLine++;
+        center_print( w_open, iLine, c_light_blue, string_format( _( "Version: %s" ),
+                      getVersionString() ) );
+    }
+
+    // Where the selected item's panel attaches. Both layouts produce one anchor;
+    // they differ in which corner it is.
+    point anchor;
+
+    if( column ) {
+        // Widest label, so the panel knows where the column ends. Must match the
+        // field print_menu_items_column computes, plus the marker gutter -
+        // measured through shortcut_text/notags the same way for that reason.
+        int menu_width = 0;
+        for( const std::string &item : vMenuItems ) {
+            menu_width = std::max( menu_width,
+                                   utf8_width_notags( shortcut_text( c_yellow, item ).c_str() ) );
+        }
+        menu_width += MENU_MARKER_W;
+
+        const std::vector<int> rows =
+            print_menu_items_column( w_open, vMenuItems, iSel, offset, MENU_ROW_STRIDE );
+
+        wnoutrefresh( w_open );
+        const point p_offset( catacurses::getbegx( w_open ), catacurses::getbegy( w_open ) );
+
+        if( rows.empty() ) {
+            return;
+        }
+        // Clamped: on Emscripten vMenuItems has no Quit entry, so it is one
+        // shorter than NUM_MENU_OPTS while iSel still ranges over that.
+        const int row = rows[clamp( iSel, 0, static_cast<int>( rows.size() ) - 1 )];
+        anchor = p_offset + point( offset.x + menu_width + MENU_PANEL_GAP, row );
     } else {
-        center_print( w_open, iLine++, c_light_cyan, mmenu_title[0] );
-    }
-
-    iLine++;
-    center_print( w_open, iLine, c_light_blue, string_format( _( "Version: %s" ),
-                  getVersionString() ) );
-
-    int menu_length = 0;
-    for( size_t i = 0; i < vMenuItems.size(); ++i ) {
-        menu_length += utf8_width_notags( vMenuItems[i].c_str() ) + 2;
-        if( !vMenuHotkeys[i].empty() ) {
-            menu_length += utf8_width( vMenuHotkeys[i][0] );
+        int menu_length = 0;
+        for( size_t i = 0; i < vMenuItems.size(); ++i ) {
+            menu_length += utf8_width_notags( vMenuItems[i].c_str() ) + 2;
+            if( !vMenuHotkeys[i].empty() ) {
+                menu_length += utf8_width( vMenuHotkeys[i][0] );
+            }
         }
+        const int free_space = std::max( 0, window_width - menu_length - offset.x );
+        const int spacing = free_space / ( static_cast<int>( vMenuItems.size() ) + 1 );
+        const int width_of_spacing = spacing * ( vMenuItems.size() + 1 );
+        const int adj_offset = std::max( 0, ( free_space - width_of_spacing ) / 2 );
+        const int final_offset = offset.x + adj_offset + spacing;
+
+        const std::vector<int> offsets =
+            print_menu_items( w_open, vMenuItems, iSel, point( final_offset, offset.y ), spacing,
+                              true );
+
+        wnoutrefresh( w_open );
+        const point p_offset( catacurses::getbegx( w_open ), catacurses::getbegy( w_open ) );
+
+        if( offsets.empty() ) {
+            return;
+        }
+        // Above the strip, growing upward - same clamp, same reason.
+        anchor = p_offset + point( offsets[clamp( iSel, 0, static_cast<int>( offsets.size() ) - 1 )],
+                                   offset.y - 2 );
     }
-    const int free_space = std::max( 0, window_width - menu_length - offset.x );
-    const int spacing = free_space / ( static_cast<int>( vMenuItems.size() ) + 1 );
-    const int width_of_spacing = spacing * ( vMenuItems.size() + 1 );
-    const int adj_offset = std::max( 0, ( free_space - width_of_spacing ) / 2 );
-    const int final_offset = offset.x + adj_offset + spacing;
 
-    std::vector<int> offsets =
-        print_menu_items( w_open, vMenuItems, iSel, point( final_offset, offset.y ), spacing, true );
-
-    wnoutrefresh( w_open );
-
-    const point p_offset( catacurses::getbegx( w_open ), catacurses::getbegy( w_open ) );
-
-    display_sub_menu( iSel, p_offset + point( offsets[iSel], offset.y - 2 ), sel_line );
+    display_sub_menu( iSel, anchor, sel_line );
 }
 
 std::vector<std::string> main_menu::load_file( const std::string &path,
@@ -451,28 +661,51 @@ holiday main_menu::get_holiday_from_time()
 
 void main_menu::init_windows()
 {
-    if( LAST_TERM == point( TERMX, TERMY ) ) {
+    // Layout is part of the guard, not just terminal size: TITLE_SCREEN is
+    // reachable from this menu and switching it resizes nothing, so without it
+    // the windows keep the old geometry while print_menu draws the new layout.
+    const bool column = use_column_menu();
+    if( LAST_TERM == point( TERMX, TERMY ) && LAST_COLUMN == column ) {
         return;
     }
 
-    // main window should also expand to use available display space.
-    // expanding to evenly use up half of extra space, for now.
-    extra_w = ( ( TERMX - FULL_SCREEN_WIDTH ) / 2 ) - 1;
-    int extra_h = ( ( TERMY - FULL_SCREEN_HEIGHT ) / 2 ) - 1;
-    extra_w = ( extra_w > 0 ? extra_w : 0 );
-    extra_h = ( extra_h > 0 ? extra_h : 0 );
-    const int total_w = FULL_SCREEN_WIDTH + extra_w;
-    const int total_h = FULL_SCREEN_HEIGHT + extra_h;
+    if( column ) {
+        // Spans the terminal: the column sits against the left edge, while a
+        // centred box starts at column 40 on a 1920x1080 screen, well past the
+        // pillarbox the column is meant to occupy.
+        w_open = catacurses::newwin( TERMY, TERMX, point_zero );
 
-    // position of window within main display
-    const point p0( ( TERMX - total_w ) / 2, ( TERMY - total_h ) / 2 );
+        // menu_offset.x is where the marker gutter starts, not the text: labels
+        // are flush right. The -1 is because the last item takes one row, not a
+        // full stride; without it the column sits half a gap low. items > 0
+        // guards the unsigned size().
+        menu_offset.x = 2;
+        const int items = static_cast<int>( vMenuItems.size() );
+        const int rows_used = items > 0 ? ( items - 1 ) * MENU_ROW_STRIDE + 1 : 1;
+        menu_offset.y = std::max( 1, ( TERMY - rows_used ) / 2 );
+    } else {
+        // Stock layout: a centred box with the menu strip across its bottom.
+        // main window should also expand to use available display space.
+        // expanding to evenly use up half of extra space, for now.
+        extra_w = ( ( TERMX - FULL_SCREEN_WIDTH ) / 2 ) - 1;
+        int extra_h = ( ( TERMY - FULL_SCREEN_HEIGHT ) / 2 ) - 1;
+        extra_w = ( extra_w > 0 ? extra_w : 0 );
+        extra_h = ( extra_h > 0 ? extra_h : 0 );
+        const int total_w = FULL_SCREEN_WIDTH + extra_w;
+        const int total_h = FULL_SCREEN_HEIGHT + extra_h;
 
-    w_open = catacurses::newwin( total_h, total_w, p0 );
+        // position of window within main display
+        const point p0( ( TERMX - total_w ) / 2, ( TERMY - total_h ) / 2 );
 
-    menu_offset.y = total_h - 3;
-    // note: if iMenuOffset is changed,
-    // please update MOTD and credits to indicate how long they can be.
+        w_open = catacurses::newwin( total_h, total_w, p0 );
 
+        menu_offset.x = 0;
+        menu_offset.y = total_h - 3;
+        // note: if iMenuOffset is changed,
+        // please update MOTD and credits to indicate how long they can be.
+    }
+
+    LAST_COLUMN = column;
     LAST_TERM = point( TERMX, TERMY );
 }
 
@@ -488,6 +721,12 @@ void main_menu::init_strings()
         mmenu_motd += ( line.empty() ? " " : line ) + "\n";
     }
     mmenu_motd = colorize( mmenu_motd, c_light_red );
+    // Version lives here in the animated mode, where the title draws no text.
+    // Prepended: the shipped MOTD is 49 lines and roughly 18 show, so an append
+    // lands far below the fold. After the colorize so it keeps its own colour,
+    // before the fold so the scrollbar counts it.
+    mmenu_motd = colorize( string_format( _( "Version: %s" ), getVersionString() ),
+                           c_light_blue ) + "\n\n" + mmenu_motd;
     mmenu_motd_len = foldstring( mmenu_motd, FULL_SCREEN_WIDTH - 2 ).size();
 
     // Credits
@@ -512,7 +751,7 @@ void main_menu::init_strings()
     vMenuItems.emplace_back( pgettext( "Main Menu", "<N|n>ew Game" ) );
     vMenuItems.emplace_back( pgettext( "Main Menu", "Lo<a|A>d" ) );
     vMenuItems.emplace_back( pgettext( "Main Menu", "<W|w>orld" ) );
-    vMenuItems.emplace_back( pgettext( "Main Menu", "T<u|U>torial Game" ) );
+    vMenuItems.emplace_back( pgettext( "Main Menu", "T<u|U>torial" ) );
     vMenuItems.emplace_back( pgettext( "Main Menu", "Se<t|T>tings" ) );
     vMenuItems.emplace_back( pgettext( "Main Menu", "H<e|E|?>lp" ) );
     vMenuItems.emplace_back( pgettext( "Main Menu", "<C|c>redits" ) );
@@ -583,24 +822,67 @@ void main_menu::init_strings()
         debugmsg( err.what() );
         std::exit( 1 );
     }
+    // Stock layout only. The loading screen picks its own tip independently.
     vdaytip = SNIPPET.random_from_category( "tip" ).value_or( translation() ).translated();
 }
 
-void main_menu::display_text( const std::string &text, const std::string &title, int &selected )
+void main_menu::display_text( const std::string &text, const std::string &title, int &selected,
+                              const point &anchor )
 {
-    const int w_open_height = getmaxy( w_open );
-    const int b_height = FULL_SCREEN_HEIGHT - clamp( ( FULL_SCREEN_HEIGHT - w_open_height ) + 4, 0, 4 );
-    const int vert_off = clamp( ( w_open_height - FULL_SCREEN_HEIGHT ) / 2, getbegy( w_open ), TERMY );
+    int b_width;
+    int b_height;
+    point p0;
 
-    catacurses::window w_border = catacurses::newwin( b_height, FULL_SCREEN_WIDTH,
-                                  point( clamp( ( TERMX - FULL_SCREEN_WIDTH ) / 2, 0, TERMX ), vert_off ) );
+    // Read once: this function both positions the panel and titles it.
+    const bool column = use_column_menu();
 
-    catacurses::window w_text = catacurses::newwin( b_height - 2, FULL_SCREEN_WIDTH - 2,
-                                point( 1 + clamp( ( TERMX - FULL_SCREEN_WIDTH ) / 2, 0, TERMX ), 1 + vert_off ) );
+    if( column ) {
+        // Attaches like the submenus, opening both ways where it will not fit
+        // below. Keeps its full height either way - sizing it to the room below
+        // the row leaves the MOTD seven lines tall on a 24-row terminal. Width
+        // is clamped because a narrow terminal may not have FULL_SCREEN_WIDTH
+        // left to the right of the column.
+        b_width = clamp( TERMX - anchor.x, 20, FULL_SCREEN_WIDTH );
+        b_height = std::min( FULL_SCREEN_HEIGHT, TERMY );
+        int y = anchor.y;
+        if( y + b_height > TERMY ) {
+            y = clamp( anchor.y - b_height / 2, 0, std::max( 0, TERMY - b_height ) );
+        }
+        p0 = point( anchor.x, y );
+    } else {
+        // Stock layout: a centred box, sized against w_open rather than the item.
+        const int w_open_height = getmaxy( w_open );
+        b_width = FULL_SCREEN_WIDTH;
+        b_height = FULL_SCREEN_HEIGHT - clamp( ( FULL_SCREEN_HEIGHT - w_open_height ) + 4, 0, 4 );
+        const int vert_off = clamp( ( w_open_height - FULL_SCREEN_HEIGHT ) / 2, getbegy( w_open ),
+                                    TERMY );
+        p0 = point( clamp( ( TERMX - FULL_SCREEN_WIDTH ) / 2, 0, TERMX ), vert_off );
+    }
 
-    draw_border( w_border, BORDER_COLOR, title );
+    catacurses::window w_border = catacurses::newwin( b_height, b_width, p0 );
 
-    int width = FULL_SCREEN_WIDTH - 2;
+    catacurses::window w_text = catacurses::newwin( b_height - 2, b_width - 2,
+                                p0 + point( 1, 1 ) );
+
+    // As the submenus, but these already have a title, so the hint joins it
+    // rather than replacing it and both give way to the bare title if too wide.
+    std::string heading = title;
+    if( column ) {
+        const std::string hint =
+            string_format( _( "%s  [<color_yellow>%s</color>/<color_yellow>%s</color>] scroll" ),
+                           title, ctxt.get_desc( "LEFT" ), ctxt.get_desc( "RIGHT" ) );
+        if( utf8_width( hint, true ) <= b_width - 2 ) {
+            heading = hint;
+        }
+    }
+    draw_border( w_border, BORDER_COLOR, heading );
+#if defined(TILES)
+    // Walls of small text; keep the black behind them so they stay readable.
+    terminal_backdrop::set_opaque_cells( point( getbegx( w_border ), getbegy( w_border ) ),
+                                         getmaxx( w_border ), getmaxy( w_border ) );
+#endif // TILES
+
+    int width = b_width - 2;
     int height = b_height - 2;
     const auto vFolded = foldstring( text, width );
     int iLines = vFolded.size();
@@ -624,6 +906,46 @@ void main_menu::load_char_templates()
     }
     std::sort( templates.begin(), templates.end(), localized_compare );
 }
+#if defined(TILES)
+/**
+ * Load or drop the title backdrop so it matches TITLE_SCREEN. Called on entering
+ * the menu and again on returning from the options screen, where the option can
+ * be changed. Must stay in step with init_strings(), which re-reads the same
+ * option for the title text; disagreeing gives a logo over a backdrop, or both
+ * missing at once.
+ */
+static void refresh_title_backdrop()
+{
+    if( get_option<std::string>( "TITLE_SCREEN" ) != "animated" ) {
+        terminal_backdrop::clear();
+        return;
+    }
+    // A missing file is not an error: set() returns false and the menu sits on
+    // black, with use_column_menu() and title() both falling back.
+    const std::string backdrop_path =
+        ( PATH_INFO::gfxdir() / "rooftop-splash.png" ).generic_u8string();
+    terminal_backdrop::set( backdrop_path, terminal_backdrop::fit::contain, 100 );
+}
+#endif // TILES
+
+/**
+ * Redraw the menu, repainting the whole screen where a backdrop is drawing.
+ *
+ * The backdrop itself is enabled inside print_menu(). This only widens what gets
+ * repainted: redraw() marks the top UI alone, so anything below - the
+ * background_pane behind w_open - would otherwise keep last frame's black.
+ * Skipped without a backdrop, leaving the ascii and text modes on the stock
+ * repaint.
+ */
+static void redraw_menu()
+{
+#if defined(TILES)
+    if( terminal_backdrop::loaded() ) {
+        ui_manager::invalidate( rectangle<point>( point_zero, point( TERMX, TERMY ) ), false );
+    }
+#endif // TILES
+    ui_manager::redraw();
+}
 
 bool main_menu::opening_screen()
 {
@@ -638,6 +960,16 @@ bool main_menu::opening_screen()
 
     world_generator->set_active_world( nullptr );
     world_generator->init();
+#if defined(TILES)
+    // Before init_strings(), which reads PATH_INFO::title() - and that answer
+    // depends on whether the art actually loaded.
+    refresh_title_backdrop();
+    // Dropped on every exit, including into a started game: several megabytes of
+    // texture with no business outliving the menu.
+    const on_out_of_scope drop_backdrop( [] {
+        terminal_backdrop::clear();
+    } );
+#endif // TILES
 
     init_strings();
 
@@ -706,7 +1038,7 @@ bool main_menu::opening_screen()
 #endif
 
     while( !start ) {
-        ui_manager::redraw();
+        redraw_menu();
         std::string action = ctxt.handle_input();
         input_event sInput = ctxt.get_raw_input();
 
@@ -768,7 +1100,7 @@ bool main_menu::opening_screen()
                         ( sel1 == getopt( main_menu_opts::HELP ) || sel1 == getopt( main_menu_opts::QUIT ) ) ) {
                         action = "CONFIRM";
                     }
-                    ui_manager::redraw();
+                    redraw_menu();
                     match = true;
                     break;
                 }
@@ -785,12 +1117,23 @@ bool main_menu::opening_screen()
                         if( action == "SELECT" ) {
                             action = "CONFIRM";
                         }
-                        ui_manager::redraw();
+                        redraw_menu();
                         break;
                     }
                 }
             }
         }
+
+        // The menu axis follows the layout and the other axis works the attached
+        // panel. Resolved once so the branches below cannot drift apart. Page
+        // and scroll keys always work the panel, in either layout.
+        const bool column_nav = use_column_menu();
+        const bool menu_prev = column_nav ? action == "UP" : action == "LEFT";
+        const bool menu_next = column_nav ? action == "DOWN" : action == "RIGHT";
+        const bool panel_prev = ( column_nav ? action == "LEFT" : action == "UP" ) ||
+                                action == "PAGE_UP" || action == "SCROLL_UP";
+        const bool panel_next = ( column_nav ? action == "RIGHT" : action == "DOWN" ) ||
+                                action == "PAGE_DOWN" || action == "SCROLL_DOWN";
 
         // also check special keys
         if( action == "QUIT" ) {
@@ -799,26 +1142,25 @@ bool main_menu::opening_screen()
                 return false;
             }
 #endif
-        } else if( action == "LEFT" || action == "PREV_TAB" || action == "RIGHT" || action == "NEXT_TAB" ) {
+        } else if( menu_prev || menu_next || action == "PREV_TAB" || action == "NEXT_TAB" ) {
             sel_line = 0;
-            sel1 = inc_clamp_wrap( sel1, action == "RIGHT" || action == "NEXT_TAB",
+            sel1 = inc_clamp_wrap( sel1, menu_next || action == "NEXT_TAB",
                                    static_cast<int>( main_menu_opts::NUM_MENU_OPTS ) );
             sel2 = sel1 == getopt( main_menu_opts::LOADCHAR ) ? last_world_pos : 0;
             on_move();
-        } else if( action == "UP" || action == "DOWN" ||
-                   action == "PAGE_UP" || action == "PAGE_DOWN" ||
-                   action == "SCROLL_UP" || action == "SCROLL_DOWN" ) {
+        } else if( panel_prev || panel_next ) {
+            // Whatever hangs off the selection: a submenu, or scrolling text.
             int max_item_count = 0;
             int min_item_val = 0;
             main_menu_opts opt = static_cast<main_menu_opts>( sel1 );
             switch( opt ) {
                 case main_menu_opts::MOTD:
                 case main_menu_opts::CREDITS:
-                    if( action == "UP" || action == "PAGE_UP" || action == "SCROLL_UP" ) {
+                    if( panel_prev ) {
                         if( sel_line > 0 ) {
                             sel_line--;
                         }
-                    } else if( action == "DOWN" || action == "PAGE_DOWN" || action == "SCROLL_DOWN" ) {
+                    } else if( panel_next ) {
                         int effective_height = sel_line + FULL_SCREEN_HEIGHT - 2;
                         if( ( opt == main_menu_opts::CREDITS && effective_height < mmenu_credits_len ) ||
                             ( opt == main_menu_opts::MOTD && effective_height < mmenu_motd_len ) ) {
@@ -846,12 +1188,12 @@ bool main_menu::opening_screen()
                     break;
             }
             if( max_item_count > 0 ) {
-                if( action == "UP" || action == "PAGE_UP" || action == "SCROLL_UP" ) {
+                if( panel_prev ) {
                     sel2--;
                     if( sel2 < min_item_val ) {
                         sel2 = max_item_count - 1;
                     }
-                } else if( action == "DOWN" || action == "PAGE_DOWN" || action == "SCROLL_DOWN" ) {
+                } else if( panel_next ) {
                     sel2++;
                     if( sel2 >= max_item_count ) {
                         sel2 = min_item_val;
@@ -904,8 +1246,17 @@ bool main_menu::opening_screen()
                 case main_menu_opts::SETTINGS:
                     if( sel2 == 0 ) {        /// Options
                         get_options().show( false );
+#if defined(TILES)
+                        // TITLE_SCREEN may have changed. Backdrop first, then
+                        // init_strings() - same order and reason as on entry.
+                        refresh_title_backdrop();
+#endif // TILES
                         // The language may have changed- gracefully handle this.
                         init_strings();
+                        // The layout may have changed, and that resizes nothing,
+                        // so nothing else would rebuild the windows. After
+                        // init_strings(): the column centres on vMenuItems.
+                        ui.mark_resize();
                     } else if( sel2 == 1 ) { /// Keybindings
                         input_context ctxt_default = get_default_mode_input_context();
                         ctxt_default.display_menu();

@@ -16,6 +16,25 @@
     Live as a low-tech stalker, a tricked-out cyborg, a twisted mutant monstrosity.<br>
     <b><i>You might not get much of a choice for the last one...</i></b><br>
 </p>
+
+<h1>
+    Salvaged Changelog<br>
+    <small><i>Version 0.1 release</i></small>
+</h1>
+<p>
+    <b><i>Electronics and Data</i></b><br>
+    Old systems going back over 10 years for electronic data ranging from photos, recipes, and ebooks are reworked.<br>
+    <b><i>Cybernetics</i></b><br>
+    Cybernetics has been modified a bit to be more mod friendly with bigger overhauls planned.<br>
+    <b><i>Advanced Tailoring</i></b><br>
+    Advanced tailoring to uparmor clothing has been brought back, but is not balanced,<br>
+    <b><i>Metal Recycling</i></b><br>
+    The Steel Mill's metal recycler has been reworked and restored, now requiring a source of power, and made mod friendly.<br>
+    <b><i>Item Spawning</i></b><br>
+    Spawnlists have been reworked.<br>
+    <b><i>Git Infrastructure</i></b><br>
+    Massively reworked for a different hosting architecture than github and partially modernized based on DDA upstream.<br>
+</p>
         
 <h1>Gameplay</h1>
 <p>

@@ -85,93 +85,11 @@ Cataclysm: Dark Days ahead is the oldest and biggest version of the game, and th
 Despite all this, it has the biggest community, the most history, the most documentation, and for a long time was the most developed and polished.
 Every guide you will see on how to compile, troubleshoot, mod, and play Cataclysm will most likely originate from Dark Days Ahead.<br>
 
-<h3>BN - <a href="https://github.com/cataclysmbn/Cataclysm-BN">Bright Nights</a></h3>
+<h3>BN - <a href="https://github.com/cataclysmbn/Cataclysm-BN">Bright Nights</a> by CleverRaven</h3>
 The oldest branch, Cataclysm: Bright Nights originates from DDA's stable 0.D release and seeks to keep the setting as it was back then. Wilder, more scifi, more power for the player to go nuts, and less survival mechanics. For a long time it lagged behind CDDA, but it has seen a surge of development and is a great alternative.<br>
 
 <h3>TLG - <a href="https://github.com/Cataclysm-TLG/Cataclysm-TLG/">The Last Generation</a> by WormGirl</h3>
 The newest branch, The Last Generation is seeing a lot of development and bug fixes, and seems to be positioning itself as a midway point between Dark Days and Bright Nights. It has a steam page just like Dark Days Ahead and I don't know enough about it to mangle a description like I did for the others.<br>
-
-<p align="center">
-    <img src="./data/screenshots/ultica-showcase-sep-2021.png" alt="Tileset: Ultica">
-</p>
-
-## Downloads
-
-**Releases** - [Stable](https://cataclysmdda.org/releases/) | [Experimental](https://cataclysmdda.org/experimental/)
-
-**Source** - The source can be downloaded as a [.zip archive](https://github.com/CleverRaven/Cataclysm-DDA/archive/master.zip), or cloned from our [GitHub repo](https://github.com/CleverRaven/Cataclysm-DDA/).
-
-<a href="https://repology.org/project/cataclysm-dda/versions">
-    <img src="https://repology.org/badge/vertical-allrepos/cataclysm-dda.svg" alt="Packaging Status" align="right">
-</a>
-
-[![General build matrix](https://github.com/CleverRaven/Cataclysm-DDA/actions/workflows/matrix.yml/badge.svg)](https://github.com/CleverRaven/Cataclysm-DDA/actions/workflows/matrix.yml)
-[![Coverage Status](https://coveralls.io/repos/github/CleverRaven/Cataclysm-DDA/badge.svg?branch=master)](https://coveralls.io/github/CleverRaven/Cataclysm-DDA?branch=master)
-[![Open Source Helpers](https://www.codetriage.com/cleverraven/cataclysm-dda/badges/users.svg)](https://www.codetriage.com/cleverraven/cataclysm-dda)
-[![Commit Activity](https://img.shields.io/github/commit-activity/m/CleverRaven/Cataclysm-DDA)](https://github.com/CleverRaven/Cataclysm-DDA/graphs/contributors)
-[![Lines of Code](https://tokei.rs/b1/github/CleverRaven/Cataclysm-DDA?category=code)](https://github.com/XAMPPRocky/tokei)
-[![TODOs](https://badgen.net/https/api.tickgit.com/badgen/github.com/CleverRaven/Cataclysm-DDA)](https://www.tickgit.com/browse?repo=github.com/CleverRaven/Cataclysm-DDA)
-
-### Packaging status
-
-#### Arch Linux
-
-Ncurses and tiles versions are available in the [community repo](https://www.archlinux.org/packages/?q=cataclysm-dda).
-
-`sudo pacman -S cataclysm-dda`
-
-#### Fedora
-
-Ncurses and tiles versions are available in the [official repos](https://src.fedoraproject.org/rpms/cataclysm-dda).
-
-`sudo dnf install cataclysm-dda`
-
-#### Debian / Ubuntu
-
-Ncurses and tiles versions are available in the [official repos](https://tracker.debian.org/pkg/cataclysm-dda).
-
-`sudo apt install cataclysm-dda-curses cataclysm-dda-sdl`
-
-#### Flathub
-
-[Download from Flathub](https://flathub.org/apps/org.cataclysmdda.CataclysmDDA)
-
-## Compile
-
-Please read [COMPILING.md](doc/COMPILING/COMPILING.md) - it covers general information and more specific recipes for Linux, OS X, Windows and BSD. See [COMPILER_SUPPORT.md](doc/COMPILING/COMPILER_SUPPORT.md) for details on which compilers we support. And you can always dig for more information in [doc/](https://github.com/CleverRaven/Cataclysm-DDA/tree/master/doc).
-
-We also have the following build guides:
-* Building on Windows with `MSYS2` at [COMPILING-MSYS.md](doc/COMPILING/COMPILING-MSYS.md)
-* Building on Windows with `vcpkg` at [COMPILING-VS-VCPKG.md](doc/COMPILING/COMPILING-VS-VCPKG.md)
-* Building with `cmake` at [COMPILING-CMAKE.md](doc/COMPILING/COMPILING-CMAKE.md)  (*unofficial guide*)
-
-## Contribute
-
-Cataclysm: Dark Days Ahead is the result of contributions from over 1000 volunteers under the Creative Commons Attribution ShareAlike 3.0 license. The code and content of the game is free to use, modify, and redistribute for any purpose whatsoever. See https://creativecommons.org/licenses/by-sa/3.0/ for details.
-Some code distributed with the project is not part of the project and is released under different software licenses; the files covered by different software licenses have their own license notices.
-
-Please see [CONTRIBUTING.md](doc/CONTRIBUTING.md) for details.
-
-Special thanks to the contributors, including but not limited to, people below:
-<a href="https://github.com/cleverraven/cataclysm-dda/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=cleverraven/cataclysm-dda" />
-</a>
-
-Made with [contrib.rocks](https://contrib.rocks).
-
-## Community
-
-Forums:
-https://discourse.cataclysmdda.org
-
-GitHub repo:
-https://github.com/CleverRaven/Cataclysm-DDA
-
-IRC:
-`#CataclysmDDA` on [Libera Chat](https://libera.chat), https://web.libera.chat/#CataclysmDDA
-
-Official Discord:
-https://discord.gg/jFEc7Yp
 
 ## Frequently Asked Questions
 
@@ -189,8 +107,8 @@ Press the `?` key, followed by the `1` key to see the full list of key commands.
 
 #### I've found a bug. What should I do?
 
-Please submit an issue on [our GitHub page](https://github.com/CleverRaven/Cataclysm-DDA/issues/) using [bug report template](https://github.com/CleverRaven/Cataclysm-DDA/issues/new?template=bug_report.md). If you're not able to, send an email to `kevin.granade@gmail.com`.
+Please submit an issue on [our GitHub page](https://github.com/CDDAHackJob/Cataclysm-Salvaged/issues/) using [bug report template](https://github.com/CDDAHackJob/Cataclysm-Salvaged/issues/new?template=bug_report.md). If you're not able to, send an email to `kevin.granade@gmail.com`.
 
 #### I would like to make a suggestion. What should I do?
 
-Please submit an issue on [our GitHub page](https://github.com/CleverRaven/Cataclysm-DDA/issues/) using [feature request template](https://github.com/CleverRaven/Cataclysm-DDA/issues/new?template=feature_request.md).
+Please submit an issue on [our GitHub page](https://github.com/CDDAHackJob/Cataclysm-Salvaged/issues/) using [feature request template](https://github.com/CleverRaven/Cataclysm-DDA/issues/new?template=feature_request.md).

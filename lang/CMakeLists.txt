@@ -29,7 +29,7 @@ add_custom_target(
 
 foreach (LANG ${LANGUAGES})
     set(_PO ${CMAKE_SOURCE_DIR}/lang/po/${LANG}.po)
-    set(_MO ${CMAKE_SOURCE_DIR}/lang/mo/${LANG}/LC_MESSAGES/cataclysm-dda.mo)
+    set(_MO ${CMAKE_SOURCE_DIR}/lang/mo/${LANG}/LC_MESSAGES/cataclysm-s.mo)
     add_custom_command(
             OUTPUT ${_MO}
             COMMAND ${CMAKE_COMMAND} -E

@@ -65,7 +65,9 @@ void TranslationManager::Impl::ScanTranslationDocuments()
     if( dir_exist( locale_dir() ) ) {
         DebugLog( D_INFO, DC_ALL ) << "[i18n] Scanning core translations from " << locale_dir();
         for( const std::string &dir : get_files_from_path( "LC_MESSAGES", locale_dir(), true ) ) {
-            mo_dirs.emplace_back( dir, "cataclysm-dda.mo" );
+            // Must name the file lang/Makefile writes: nothing checks that it
+            // does, and a mismatch silently yields no translations at all.
+            mo_dirs.emplace_back( dir, PATH_INFO::lang_file() );
         }
     }
     for( const std::pair<std::string, std::string> &entry : mo_dirs ) {

@@ -76,11 +76,11 @@ We also have the following build guides:
 <h1>Other Versions</h1>
 When you have an open source project go on for 15 years with thousands of contributors, people inevitably split on opinions on where to go.
 Cataclysm: Salvaged is my own fork and will be a solo project to take the game in the direction I choose. I am a scavenger intent on sifting through the scraps and piecing together what I think is fun.<br>
-Anything I have is free to take per the licenses; just take a mention of me along with you.<br>
+Anything I have is free to take per the CC BY-SA 3.0 license; just take a mention of me along with you.<br>
 I will be doing the same for what I take from others.<br>
 Below are some inaccurate summaries of the main branches:
 
-<h3>DDA - <a href="https://github.com/cleverraven/cataclysm-dda">Dark Days Ahead</a> by TheDarklingWolf</h3>
+<h3>DDA - <a href="https://github.com/cleverraven/cataclysm-dda">Dark Days Ahead</a> by TheDarklingWolf, GlyphGryph, and Kevin Granade</h3>
 Cataclysm: Dark Days ahead is the oldest and biggest version of the game, and the source of all other branches. Its maintainers did the most to build things up, but eventually disagreements saw the other branches emerge. It seeks to discard the scifi and power of the old days, and make the setting more current and grittier, more focused on survival mechanics. It wants to be more like project Zomboid these days, and some heavy-handed deletions of old sections instead of fixing them saw it lose some support, causing TLG to emerge and Bright Nights to gain more popularity.<br>
 Despite all this, it has the biggest community, the most history, the most documentation, and for a long time was the most developed and polished.
 Every guide you will see on how to compile, troubleshoot, mod, and play Cataclysm will most likely originate from Dark Days Ahead.<br>

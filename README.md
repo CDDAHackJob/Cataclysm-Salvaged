@@ -66,7 +66,7 @@ So far this should be compilable on linux or windows via gcc, clang, cmake, MSYS
 -LIST BUILD GUIDE EVENTUALLY<br>
 -PUBLISH TESTS EVENTUALLY<br>
 
-Please read [COMPILING.md](doc/COMPILING/COMPILING.md) - it covers general information and more specific recipes for Linux, OS X, Windows and BSD. See [COMPILER_SUPPORT.md](doc/COMPILING/COMPILER_SUPPORT.md) for details on which compilers we support. And you can always dig for more information in [doc/](https://github.com/CleverRaven/Cataclysm-DDA/tree/master/doc).
+Please read [COMPILING.md](doc/COMPILING/COMPILING.md) - it covers general information and more specific recipes for Linux, OS X, Windows and BSD. See [COMPILER_SUPPORT.md](doc/COMPILING/COMPILER_SUPPORT.md) for details on which compilers we support. And you can always dig for more information in [doc/](https://github.com/CDDAHackJob/Cataclysm-Salvaged/tree/master/doc).
 
 We also have the following build guides:
 * Building on Windows with `MSYS2` at [COMPILING-MSYS.md](doc/COMPILING/COMPILING-MSYS.md)
@@ -111,4 +111,4 @@ Please submit an issue on [our GitHub page](https://github.com/CDDAHackJob/Catac
 
 #### I would like to make a suggestion. What should I do?
 
-Please submit an issue on [our GitHub page](https://github.com/CDDAHackJob/Cataclysm-Salvaged/issues/) using [feature request template](https://github.com/CleverRaven/Cataclysm-DDA/issues/new?template=feature_request.md).
+Please submit an issue on [our GitHub page](https://github.com/CDDAHackJob/Cataclysm-Salvaged/issues/) using [feature request template](https://github.com/CDDAHackJob/Cataclysm-Salvaged/issues/new?template=feature_request.md).

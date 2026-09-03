@@ -155,7 +155,7 @@ jobs:
       if: failure()
       run: |
         echo =================================================
-        Get-ChildItem "${{ runner.workspace }}/Cataclysm-DDA/msvc-full-features/vcpkg_installed" -Recurse
+        Get-ChildItem "${{ github.workspace }}/msvc-full-features/vcpkg_installed" -Recurse
         echo =================================================
         Get-ChildItem "${{ runner.workspace }}/b/vcpkg/buildtrees" |
         Foreach-Object {

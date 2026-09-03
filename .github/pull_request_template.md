@@ -25,9 +25,9 @@ Examples:
 4. Infrastructure "JSON-ize slot machines"
 5. Bugfixes "Crafting GUI: show how much recipe makes for non-charge items"
 For more on the meaning of each category, see:
-https://github.com/CleverRaven/Cataclysm-DDA/blob/master/doc/CHANGELOG_GUIDELINES.md
+https://github.com/CDDAHackJob/Cataclysm-Salvaged/blob/master/doc/CHANGELOG_GUIDELINES.md
 If approved and merged, your summary will be added to the project changelog:
-https://github.com/CleverRaven/Cataclysm-DDA/blob/master/data/changelog.txt -->
+https://github.com/CDDAHackJob/Cataclysm-Salvaged/blob/master/data/changelog.txt -->
 
 #### Purpose of change
 

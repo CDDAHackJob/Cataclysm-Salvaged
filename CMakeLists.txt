@@ -84,14 +84,6 @@ if ("${CMAKE_SYSTEM_NAME}" MATCHES "FreeBSD"
     set(_OS_BSD_ 1)
 endif ()
 
-if ("${CMAKE_SYSTEM_NAME}" MATCHES "Darwin")
-    set(_OS_DARWIN_ 1)
-    add_definitions(-DMACOSX)
-    if (TILES)
-        add_definitions(-DOSX_SDL2_LIBS)
-    endif ()
-endif ()
-
 include(CheckCXXCompilerFlag)
 
 if(DEFINED ENV{MSYSTEM})
@@ -175,7 +167,7 @@ else ()
     add_definitions(-DRELEASE)
     # Use CMAKE_INSTALL_PREFIX as storage of data,gfx, etc.. Useful only on *nix OS.
     if(USE_PREFIX_DATA_DIR)
-        if ("${CMAKE_SYSTEM_NAME}" MATCHES "(Linux|FreeBSD|Darwin)")
+        if ("${CMAKE_SYSTEM_NAME}" MATCHES "(Linux|FreeBSD)")
             set(CMAKE_INSTALL_DATAROOTDIR "${CMAKE_INSTALL_PREFIX}/share/cataclysm-dda")
             add_definitions(-DPREFIX=${CMAKE_INSTALL_PREFIX})
             configure_file(

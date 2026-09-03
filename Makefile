@@ -11,17 +11,8 @@
 #   or make CROSS=i586-mingw32msvc-
 #   or whichever prefix your crosscompiler uses
 #      as long as its name contains mingw32
-# Linux cross-compile to OSX with osxcross
-#   make CROSS=x86_64-apple-darwin15-
-#        NATIVE=osx
-#        CLANG=1
-#        OSXCROSS=1
-#        LIBSDIR=../libs
-#        FRAMEWORKSDIR=../Frameworks
 # Win32 (non-Cygwin)
 #   Run: make NATIVE=win32
-# OS X
-#   Run: make NATIVE=osx
 # Emscripten
 #   Run: make NATIVE=emscripten
 
@@ -156,11 +147,6 @@ endif
 
 TARGET = $(BUILD_PREFIX)$(TARGET_NAME)
 TILESTARGET = $(BUILD_PREFIX)$(TILES_TARGET_NAME)
-ifeq ($(TILES), 1)
-  APPTARGET = $(TILESTARGET)
-else
-  APPTARGET = $(TARGET)
-endif
 W32TILESTARGET = $(BUILD_PREFIX)$(TILES_TARGET_NAME).exe
 W32TARGET = $(BUILD_PREFIX)$(TARGET_NAME).exe
 CHKJSON_BIN = $(BUILD_PREFIX)chkjson
@@ -259,15 +245,6 @@ endif
 
 OS = $(shell uname -s)
 
-ifneq ($(findstring Darwin,$(OS)),)
-  ifndef NATIVE
-    NATIVE = osx
-  endif
-  ifndef CLANG
-    CLANG = 1
-  endif
-endif
-
 # Default to disabling clang
 ifndef CLANG
   CLANG = 0
@@ -336,9 +313,6 @@ ifneq ($(CLANG), 0)
   else
     CLANGCMD = $(CLANG)
   endif
-  ifeq ($(NATIVE), osx)
-    USE_LIBCXX = 1
-  endif
   ifeq ($(BSD), 1)
     ifndef USE_LIBCXX
       USE_LIBCXX = 1
@@ -394,13 +368,7 @@ endif
 
 # enable optimizations. slow to build
 ifeq ($(RELEASE), 1)
-  ifeq ($(NATIVE), osx)
-    ifeq ($(shell $(CXX) -E -Os - < /dev/null > /dev/null 2>&1 && echo fos),fos)
-      OPTLEVEL = -Os
-    else
-      OPTLEVEL = -O3
-    endif
-  else ifeq ($(NATIVE), emscripten)
+  ifeq ($(NATIVE), emscripten)
     OPTLEVEL = -Os
   else
     # MXE ICE Workaround
@@ -422,14 +390,8 @@ ifeq ($(RELEASE), 1)
   CXXFLAGS += $(OPTLEVEL)
 
   ifeq ($(LTO), 1)
-    ifeq ($(NATIVE), osx)
-      ifneq ($(CLANG), 0)
-        LTOFLAGS += -flto=full
-      endif
-    else
-      ifeq ($(GOLD), 1)
-        LDFLAGS += -fuse-ld=gold # This breaks in OS X because gold can only produce ELF binaries, not Mach
-      endif
+    ifeq ($(GOLD), 1)
+      LDFLAGS += -fuse-ld=gold
     endif
 
     ifneq ($(CLANG), 0)
@@ -573,44 +535,6 @@ else
   endif
 endif
 
-# OSX
-ifeq ($(NATIVE), osx)
-  DEFINES += -DMACOSX
-  CXXFLAGS += -mmacosx-version-min=10.13
-  LDFLAGS += -mmacosx-version-min=10.13 -framework CoreFoundation -Wl,-headerpad_max_install_names
-  ifeq ($(UNIVERSAL_BINARY), 1)
-    CXXFLAGS += -arch x86_64 -arch arm64
-    LDFLAGS += -arch x86_64 -arch arm64
-  endif
-  ifdef FRAMEWORK
-    ifeq ($(FRAMEWORKSDIR),)
-      FRAMEWORKSDIR := $(strip $(if $(shell [ -d $(HOME)/Library/Frameworks ] && echo 1), \
-                             $(if $(shell find $(HOME)/Library/Frameworks -name 'SDL2.*'), \
-                               $(HOME)/Library/Frameworks,),))
-    endif
-    ifeq ($(FRAMEWORKSDIR),)
-      FRAMEWORKSDIR := $(strip $(if $(shell find /Library/Frameworks -name 'SDL2.*'), \
-                                 /Library/Frameworks,))
-    endif
-    ifeq ($(FRAMEWORKSDIR),)
-      $(error "SDL2 framework not found")
-    endif
-  endif
-  ifeq ($(LOCALIZE), 1)
-    ifneq ($(TILES), 1)
-      CXXFLAGS += -D_XOPEN_SOURCE_EXTENDED
-      ifeq ($(MACPORTS), 1)
-        CXXFLAGS += -I$(shell ncursesw6-config --includedir)
-        LDFLAGS += -L$(shell ncursesw6-config --libdir)
-      endif
-    endif
-  endif
-  TARGETSYSTEM=LINUX
-  ifneq ($(OS), Linux)
-    BINDIST_CMD = tar -s"@^$(BINDIST_DIR)@cataclysmdda-$(VERSION)@" -czvf $(BINDIST) $(BINDIST_DIR)
-  endif
-endif
-
 # Win32 (MinGW32 or MinGW-w64(32bit)?)
 ifeq ($(NATIVE), win32)
 # Any reason not to use -m32 on MinGW32?
@@ -724,33 +648,7 @@ endif
 ifeq ($(TILES), 1)
   SDL = 1
   BINDIST_EXTRAS += gfx
-  ifeq ($(NATIVE),osx)
-    ifdef FRAMEWORK
-      OSX_INC = -F$(FRAMEWORKSDIR) \
-		-I$(FRAMEWORKSDIR)/SDL2.framework/Headers \
-		-I$(FRAMEWORKSDIR)/SDL2_image.framework/Headers \
-		-I$(FRAMEWORKSDIR)/SDL2_ttf.framework/Headers
-			ifeq ($(SOUND), 1)
-				OSX_INC += -I$(FRAMEWORKSDIR)/SDL2_mixer.framework/Headers
-			endif
-      LDFLAGS += -F$(FRAMEWORKSDIR) \
-		 -framework SDL2 -framework SDL2_image -framework SDL2_ttf -framework Cocoa
-		 ifeq ($(SOUND), 1)
-		 	LDFLAGS += -framework SDL2_mixer
-		 endif
-      CXXFLAGS += $(OSX_INC)
-    else # libsdl build
-      DEFINES += -DOSX_SDL2_LIBS
-      # handle #include "SDL2/SDL.h" and "SDL.h"
-      CXXFLAGS += $(shell sdl2-config --cflags) \
-		  -I$(shell dirname $(shell sdl2-config --cflags | sed 's/-I\(.[^ ]*\) .*/\1/'))
-      LDFLAGS += -framework Cocoa $(shell sdl2-config --libs) -lSDL2_ttf
-      LDFLAGS += -lSDL2_image
-      ifeq ($(SOUND), 1)
-        LDFLAGS += -lSDL2_mixer
-      endif
-    endif
-  else ifneq ($(NATIVE),emscripten)
+  ifneq ($(NATIVE),emscripten)
     CXXFLAGS += $(shell $(PKG_CONFIG) --cflags sdl2)
     CXXFLAGS += $(shell $(PKG_CONFIG) --cflags SDL2_image SDL2_ttf)
 
@@ -803,13 +701,11 @@ else
   # ONLY when not cross-compiling, check for pkg-config or ncurses5-config
   # When doing a cross-compile, we can't rely on the host machine's -configs
   ifeq ($(CROSS),)
-      ifeq ($(OSXCROSS),)
-        ifneq ($(shell pkg-config --libs $(NCURSES_PREFIX) 2>/dev/null),)
-          HAVE_PKGCONFIG = 1
-        endif
-        ifneq ($(shell which $(NCURSES_PREFIX)5-config 2>/dev/null),)
-          HAVE_NCURSES5CONFIG = 1
-        endif
+      ifneq ($(shell pkg-config --libs $(NCURSES_PREFIX) 2>/dev/null),)
+        HAVE_PKGCONFIG = 1
+      endif
+      ifneq ($(shell which $(NCURSES_PREFIX)5-config 2>/dev/null),)
+        HAVE_NCURSES5CONFIG = 1
       endif
   endif
 
@@ -826,10 +722,6 @@ else
         LDFLAGS += -l$(NCURSES_PREFIX)
       endif
 
-      ifdef OSXCROSS
-        LDFLAGS += -L$(LIBSDIR)/$(NCURSES_PREFIX)/lib
-        CXXFLAGS += -I$(LIBSDIR)/$(NCURSES_PREFIX)/include
-      endif # OSXCROSS
     endif # HAVE_NCURSES5CONFIG
   endif # HAVE_PKGCONFIG
   ifeq ($(MSYS),1)
@@ -841,21 +733,9 @@ ifeq ($(SOUND), 1)
   ifneq ($(TILES),1)
     $(error "SOUND=1 only works with TILES=1")
   endif
-  ifeq ($(NATIVE),osx)
-    ifndef FRAMEWORK # libsdl build
-      ifeq ($(MACPORTS), 1)
-        LDFLAGS += -lSDL2_mixer -lvorbisfile -lvorbis -logg
-      else # homebrew
-        CXXFLAGS += $(shell $(PKG_CONFIG) --cflags SDL2_mixer)
-        LDFLAGS += $(shell $(PKG_CONFIG) --libs SDL2_mixer)
-        LDFLAGS += -lvorbisfile -lvorbis -logg
-      endif
-    endif
-  else # not osx
-    CXXFLAGS += $(shell $(PKG_CONFIG) --cflags SDL2_mixer)
-    LDFLAGS += $(shell $(PKG_CONFIG) --libs SDL2_mixer)
-    LDFLAGS += -lpthread
-  endif
+  CXXFLAGS += $(shell $(PKG_CONFIG) --cflags SDL2_mixer)
+  LDFLAGS += $(shell $(PKG_CONFIG) --libs SDL2_mixer)
+  LDFLAGS += -lpthread
 
   ifeq ($(MSYS2),1)
     LDFLAGS += -lmpg123 -lshlwapi -lvorbisfile -lvorbis -logg -lflac
@@ -1228,96 +1108,6 @@ ifdef LANGUAGES
 	$(MAKE) -C lang install
 endif
 endif
-
-
-ifeq ($(NATIVE), osx)
-APPTARGETDIR=Cataclysm.app
-APPRESOURCESDIR=$(APPTARGETDIR)/Contents/Resources
-APPDATADIR=$(APPRESOURCESDIR)/data
-ifndef FRAMEWORK
-  SDLLIBSDIR=$(shell sdl2-config --libs | sed -n 's/.*-L\([^ ]*\) .*/\1/p')
-endif  # ifndef FRAMEWORK
-
-appclean:
-	rm -rf $(APPTARGETDIR)
-	rm -f data/options.txt
-	rm -f data/keymap.txt
-	rm -f data/auto_pickup.txt
-	rm -f data/fontlist.txt
-
-build-data/osx/AppIcon.icns: build-data/osx/AppIcon.iconset
-	iconutil -c icns $<
-
-ifdef OSXCROSS
-app: appclean version $(APPTARGET)
-else
-app: appclean version build-data/osx/AppIcon.icns $(APPTARGET)
-endif
-	mkdir -p $(APPTARGETDIR)/Contents
-	cp build-data/osx/Info.plist $(APPTARGETDIR)/Contents/
-	mkdir -p $(APPTARGETDIR)/Contents/MacOS
-	cp build-data/osx/Cataclysm.sh $(APPTARGETDIR)/Contents/MacOS/
-	mkdir -p $(APPRESOURCESDIR)
-	cp $(APPTARGET) $(APPRESOURCESDIR)/
-	cp build-data/osx/AppIcon.icns $(APPRESOURCESDIR)/
-	mkdir -p $(APPDATADIR)
-	cp data/fontdata.json $(APPDATADIR)
-	cp -R data/core $(APPDATADIR)
-	cp -R data/font $(APPDATADIR)
-	cp -R data/json $(APPDATADIR)
-	cp -R data/mods $(APPDATADIR)
-	cp -R data/names $(APPDATADIR)
-	cp -R data/raw $(APPDATADIR)
-	cp -R data/motd $(APPDATADIR)
-	cp -R data/credits $(APPDATADIR)
-	cp -R data/title $(APPDATADIR)
-	cp -R data/help $(APPDATADIR)
-ifdef LANGUAGES
-	$(MAKE) -C lang
-	mkdir -p $(APPRESOURCESDIR)/lang/mo/
-	cp -pR lang/mo/* $(APPRESOURCESDIR)/lang/mo/
-endif
-ifeq ($(TILES), 1)
-ifeq ($(SOUND), 1)
-	cp -R data/sound $(APPDATADIR)
-endif  # ifeq ($(SOUND), 1)
-	cp -R gfx $(APPRESOURCESDIR)/
-ifdef FRAMEWORK
-	cp -R $(FRAMEWORKSDIR)/SDL2.framework $(APPRESOURCESDIR)/
-	cp -R $(FRAMEWORKSDIR)/SDL2_image.framework $(APPRESOURCESDIR)/
-	cp -R $(FRAMEWORKSDIR)/SDL2_ttf.framework $(APPRESOURCESDIR)/
-ifeq ($(SOUND), 1)
-	cp -R $(FRAMEWORKSDIR)/SDL2_mixer.framework $(APPRESOURCESDIR)/
-endif  # ifeq ($(SOUND), 1)
-endif  # ifdef FRAMEWORK
-endif  # ifdef TILES
-
-ifndef FRAMEWORK
-	dylibbundler -of -b -x $(APPRESOURCESDIR)/$(APPTARGET) -d $(APPRESOURCESDIR)/ -p @executable_path/	
-endif  # ifndef FRAMEWORK
-
-
-dmgdistclean:
-	rm -rf Cataclysm
-	rm -f Cataclysm.dmg
-	rm -rf lang/mo
-
-dmgdist: dmgdistclean $(L10N) app
-ifdef OSXCROSS
-	mkdir Cataclysm
-	cp -a $(APPTARGETDIR) Cataclysm/$(APPTARGETDIR)
-	cp build-data/osx/DS_Store Cataclysm/.DS_Store
-	cp build-data/osx/dmgback.png Cataclysm/.background.png
-	ln -s /Applications Cataclysm/Applications
-	genisoimage -quiet -D -V "Cataclysm DDA" -no-pad -r -apple -o Cataclysm-uncompressed.dmg Cataclysm/
-	dmg dmg Cataclysm-uncompressed.dmg Cataclysm.dmg
-	rm Cataclysm-uncompressed.dmg
-else
-	plutil -convert binary1 Cataclysm.app/Contents/Info.plist
-	dmgbuild -s build-data/osx/dmgsettings.py "Cataclysm DDA" Cataclysm.dmg
-endif
-
-endif  # ifeq ($(NATIVE), osx)
 
 $(BINDIST): distclean version $(TARGET) $(L10N) $(BINDIST_EXTRAS) $(BINDIST_LOCALE)
 	mkdir -p $(BINDIST_DIR)

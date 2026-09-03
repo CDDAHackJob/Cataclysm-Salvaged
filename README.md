@@ -107,8 +107,8 @@ Press the `?` key, followed by the `1` key to see the full list of key commands.
 
 #### I've found a bug. What should I do?
 
-Please submit an issue on [our GitHub page](https://github.com/CDDAHackJob/Cataclysm-Salvaged/issues/) using [bug report template](https://github.com/CDDAHackJob/Cataclysm-Salvaged/issues/new?template=bug_report.md). If you're not able to, send an email to `CDDA_HackJob@protonmail.com`.
+Please submit an issue on [our GitHub page](https://github.com/CDDAHackJob/Cataclysm-Salvaged/issues/) using [bug report template](https://github.com/CDDAHackJob/Cataclysm-Salvaged/issues/new?template=bug_report.yaml). If you're not able to, send an email to `CDDA_HackJob@protonmail.com`.
 
 #### I would like to make a suggestion. What should I do?
 
-Please submit an issue on [our GitHub page](https://github.com/CDDAHackJob/Cataclysm-Salvaged/issues/) using [feature request template](https://github.com/CDDAHackJob/Cataclysm-Salvaged/issues/new?template=feature_request.md).
+Please submit an issue on [our GitHub page](https://github.com/CDDAHackJob/Cataclysm-Salvaged/issues/) using [feature request template](https://github.com/CDDAHackJob/Cataclysm-Salvaged/issues/new?template=feature_request.yaml).

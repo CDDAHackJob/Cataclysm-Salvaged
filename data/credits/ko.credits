@@ -1,148 +1,38 @@
-# Lines longer than 78 characters will be wrapped automatically
-# The following line is for reference
+# #으로 시작하는 줄은 표시되지 않습니다.
+# 창 너비보다 긴 줄은 자동으로 줄바꿈됩니다.
+# 다음 줄은 이전 파일에서 쓰던 78자 기준선입니다.
 ##############################################################################
-<color_white>오리지널 제작자:</color>    <color_white>프로젝트 매니저:</color>
-<color_yellow>Whales</color> (<color_dark_gray>은퇴</color>)    <color_yellow>KevinGranade</color>
+# 이 포크가 물려받았고 앞으로 가져다 쓰려는 프로젝트들의 전체 기여자 명단은
+# 이 디렉터리의 fullcredits.credits 파일에 그대로 보존되어 있습니다.
+# 게임은 그 파일을 읽지 않습니다.
 
-<color_white>현재 개발자들:</color>
-<color_yellow>I-am-Erk</color> - Ultica 타일셋, 로어, 아이디어 제공.
-<color_yellow>KorGgenT</color> - 야크 면도 전문가.
+<color_white>Cataclysm의 원작자:</color>
+<color_yellow>Whales</color> - <color_light_cyan>Cataclysm</color>을 만들었습니다.
 
-<color_white>도움을 주신 분들:</color>
-<color_yellow>anothersimulacrum</color> - 힘든 일들을 도와줌.
-<color_yellow>BombasticSlacks</color> - 방어구 시스템 건축에 도움을 줌.
-<color_yellow>Fris0uman</color> - 냉장고 고쳐줌.
-<color_yellow>John-Candlebury</color> - 허브 01과 아름다운 맵들을 만듬.
-<color_yellow>jbytheway</color> - 맵젠 시스템 최적화에 도움을 줌.
-<color_yellow>BrettDong</color> - 번역 도움과 이상한 버그 잡아줌.
-<color_yellow>wapcaplet</color> - 사이드바 재건축.
-<color_yellow>ZhilkinSerg</color> - PR 머징을 도와줌.
-<color_yellow>Rivet-the-Zombie</color> - 연속 1일1머지 기록을 유지해줌.
-<color_yellow>Night-Pryanik</color> - 수많은 버그픽스와 스탯부여 시스템을 만듬.
-<color_yellow>Qrox</color> - UI 기반 최적화에 도움을 줌.
-<color_yellow>Ramza13</color> - JSON을 튜링 완전 언어로 바꿔버림.
-<color_yellow>Drew4484</color> - 강철.
-<color_yellow>LyleSY</color> - 공룡!
-<color_yellow>irwiss</color>, <color_yellow>Maleclypse</color>, <color_yellow>Venera3</color>, <color_yellow>MylieDaniels</color>, <color_yellow>andrei8l</color>, <color_yellow>mqrause</color>, 그리고 <color_yellow>Eltank</color>.
+<color_white>Cataclysm: Dark Days Ahead</color>
+<color_yellow>TheDarklingWolf</color> - <color_light_cyan>Cataclysm</color>에서 <color_light_blue>Dark Days Ahead</color>를 갈라내고,
+다른 모든 갈래가 물려받은 핵심 구조를 세웠습니다.
 
-<color_white>타일셋 등에 도움을 주신 분들:</color>
-<color_yellow>Fris0uman</color>, <color_yellow>Golfavel</color>, <color_yellow>vetall812</color>, <color_yellow>Dandy-boy</color>, 등...
-
-<color_white>전체 기여자 목록:</color>
-<color_cyan>https://github.com/CleverRaven/Cataclysm-DDA/contributors</color>
-
-<color_light_cyan>Cataclysm</color>: <color_light_blue>Dark Days Ahead</color> is released under <color_white>CC-BY-SA 3.0</color>:
-<color_cyan>https://creativecommons.org/licenses/by-sa/3.0/</color>
-
-******************************************************************************
-
-<color_white>Main Developers (<color_cyan>0.F</color>):</color>
-<color_yellow>mlangsdorf</color> - Vehicles, boats, basecamps and modding guides.
-<color_yellow>I-am-Erk</color> - Ultica legacy lives on.
-<color_yellow>KorGgenT</color> - Not letting me know where to put my two-by-fours.
-
-<color_white>Special thanks to (<color_cyan>0.F</color>):</color>
-<color_yellow>Aivean</color> - For outstanding performance.
-<color_yellow>anothersimulacrum</color> - For making me weary.
-<color_yellow>jbytheway</color> - For making me achieve things.
-<color_yellow>BrettDong</color> - For translations and more.
-<color_yellow>Qrox</color> - For showing location of error messages.
-<color_yellow>LyleSY</color> - For dinosaurrrs.
-
-<color_white>Special thanks for art contributions (<color_cyan>0.F</color>):</color>
-<color_yellow>acepleiades</color>, <color_yellow>barsoosayque</color>, <color_yellow>Fris0uman</color>, <color_yellow>int-ua</color>, and many more.
-
-<color_white>전체 기여자 목록:</color>
-<color_cyan>https://github.com/CleverRaven/Cataclysm-DDA/contributors</color>
-
-<color_light_cyan>Cataclysm</color>: <color_light_blue>Dark Days Ahead</color> is released under <color_white>CC-BY-SA 3.0</color>:
-<color_cyan>https://creativecommons.org/licenses/by-sa/3.0/</color>
-
-******************************************************************************
-
-<color_white>Main Developers (<color_cyan>0.E</color>):</color>
-<color_yellow>mlangsdorf</color> - Vehicles, boats, basecamps and modding guides.
-<color_yellow>I-am-Erk</color> - Ultica, dialogs, NPCs and clutter in the kitchens.
-<color_yellow>KorGgenT</color> - Magiclysm and stomach aches.
-
-<color_white>Special thanks to (<color_cyan>0.E</color>):</color>
-<color_yellow>Narc</color> - For maintaining the automatic Jenkins build-bot.
-<color_yellow>Rivet-the-Zombie</color> - For merging a PR a day.
-<color_yellow>BevapDin</color> - For code reviews and refactoring efforts.
-<color_yellow>BrettDong</color> - For translations.
-<color_yellow>curstwist</color> - For roofs, mapgens, NPCs and changelogs.
-<color_yellow>davidpwbrown</color> - For auto-travel and auto-driving.  Also horse-riding.
-<color_yellow>jbytheway</color> - For CI work and making his (tri)point.
-<color_yellow>Hymore246</color> - For martial arts overhaul.
-<color_yellow>Qrox</color> - For readable backtraces in Windows builds.
-<color_yellow>ZhilkinSerg</color> - For mergetesting.
-
-<color_white>For a full list of contributors please see the Git repo:</color>
+<color_yellow>KevinGranade</color> - <color_yellow>CleverRaven</color> 조직의 프로젝트 책임자.
 <color_cyan>https://github.com/CleverRaven/Cataclysm-DDA</color>
+제가 값진 것을 건져 올리는 곳은 여러분의 과거입니다.
 
-******************************************************************************
+<color_white>Cataclysm: Bright Nights</color> - 제작: <color_yellow>scarf005</color>, <color_yellow>RobbieNeko</color>, <color_yellow>chaosvolt</color>, <color_yellow>Oren Audeles</color>
+<color_cyan>https://github.com/cataclysmbn/Cataclysm-BN</color>
+미래를 생각할 때 제가 부러운 눈으로 바라보는 것은 여러분입니다.
 
-<color_white>Main Developers (<color_cyan>0.D</color>):</color>
-<color_yellow>KevinGranade</color>, <color_yellow>Rivet-the-Zombie</color>, <color_yellow>BevapDin</color>, <color_yellow>Coolthulu</color>, <color_yellow>i2amroy</color>
+<color_white>Cataclysm: The Last Generation</color> - 제작: <color_yellow>WormGirl</color>
+<color_cyan>https://github.com/Cataclysm-TLG/Cataclysm-TLG</color>
+같은 생각을 품었고 그것을 이룰 힘은 훨씬 컸습니다. 행운을 빕니다.
 
-<color_white>Special thanks to (<color_cyan>0.D</color>):</color>
-<color_yellow>Narc</color> - For setting up the automatic Jenkins build-bot.
-<color_yellow>Acidia</color> - For wonderful NPC, Quest and Location contributions.
-<color_yellow>Wuzzy</color> and <color_yellow>VlasovVitaly</color> - For herculean translation efforts.
-<color_yellow>HuXTUS</color> - For a huge amount of amazing content.
+<color_white>이 모두가 수백에서 수천 명에 이르는 자원자들의 작업물입니다.</color>
+<color_white>전체 명단은 fullcredits.credits를, 각 프로젝트의 기여자 그래프는</color>
+<color_white>위의 링크를 참고하십시오.</color>
 
-******************************************************************************
+<color_light_cyan>Cataclysm</color>: <color_yellow>Salvaged</color>는 <color_light_cyan>Cataclysm</color>: <color_light_blue>Dark Days Ahead</color>의 개작판이며,
+<color_white>원작과 마찬가지로 CC BY-SA 3.0 라이선스로 배포됩니다:</color>
+<color_cyan>https://creativecommons.org/licenses/by-sa/3.0/</color>
 
-<color_white>Main Developers (<color_cyan>0.C</color>):</color>
-<color_yellow>KevinGranade</color>, <color_yellow>Rivet-the-Zombie</color>, <color_yellow>KA101</color>, <color_yellow>BevapDin</color>, <color_yellow>Coolthulu</color>, <color_yellow>i2amroy</color>
+제가 만드는 모든 것은 자신의 Cataclysm 갈래에서 그것을 이루고자 하는 누구에게나 CC BY-SA 3.0 라이선스로 자유롭게 드립니다.
 
-<color_white>Special thanks to (<color_cyan>0.C</color>):</color>
-<color_yellow>Narc</color> - For setting up the automatic Jenkins build-bot.
-<color_yellow>Acidia</color> - For wonderful NPC, Quest and Location contributions.
-<color_yellow>Wuzzy</color> and <color_yellow>VlasovVitaly</color> - For herculean translation efforts.
-<color_yellow>HuXTUS</color> - For a huge amount of amazing content.
-
-******************************************************************************
-
-<color_white>Main Developers (<color_cyan>0.B</color>):</color>
-<color_yellow>KevinGranade</color>, <color_yellow>Rivet-the-Zombie</color>, <color_yellow>KA101</color>, <color_yellow>BevapDin</color>
-
-<color_white>Special thanks to (<color_cyan>0.B</color>):</color>
-<color_yellow>Narc</color> - For setting up the automatic Jenkins build-bot.
-<color_yellow>Acidia</color> - For wonderful NPC, Quest and Location contributions.
-<color_yellow>Wuzzy</color> and <color_yellow>VlasovVitaly</color> - For herculean translation efforts.
-<color_yellow>i2amroy</color> - For several large infrastructural overhauls.
-<color_yellow>HuXTUS</color> - For a huge amount of amazing content.
-
-******************************************************************************
-
-<color_white>Main Developers (<color_cyan>0.A</color>):</color>
-<color_yellow>KevinGranade</color>, <color_yellow>i2amroy</color>, <color_yellow>Rivet-the-Zombie</color>, <color_yellow>KA101</color>, <color_yellow>BevapDin</color>
-
-<color_white>Special thanks to (<color_cyan>0.A</color>):</color>
-<color_yellow>TheDarklingWolf</color> - For creating Cataclysm:DDA as we know it.
-<color_yellow>Narc</color> - For setting up the automatic Jenkins build-bot.
-<color_yellow>BevapDin</color> - For tireless bugfixing efforts.
-<color_yellow>dwarfkoala</color> - For a plethora of bug triage.
-<color_yellow>Ill-kun</color> - For countless UI cleanups.
-
-******************************************************************************
-
-<color_white>Main Developers (<color_cyan>0.9</color>):</color>
-<color_yellow>KevinGranade</color>, <color_yellow>GalenEvil</color>, <color_yellow>i2amroy</color>, <color_yellow>AtomicDryad</color>, <color_yellow>Ianestrachan</color>
-
-<color_white>Special thanks to (<color_cyan>0.9</color>):</color>
-<color_yellow>TheDarklingWolf</color> - For creating Cataclysm:DDA as we know it.
-<color_yellow>Narc</color> - For setting up the automatic Jenkins build-bot.
-<color_yellow>yobbobanana</color> - For working as liason between translators and GitHub.
-<color_yellow>Angela 'Rivet' Graves</color>, Constant Creator of Cataclysmic Content.
-
-******************************************************************************
-
-<color_white>Main Developers (<color_cyan>0.8</color>):</color>
-<color_yellow>Kevingranade</color>, <color_yellow>GalenEvil</color>, <color_yellow>i2amroy</color>, <color_yellow>AtomicDryad</color>, <color_yellow>Ozone</color>
-
-<color_white>Special thanks to (<color_cyan>0.8</color>):</color>
-<color_yellow>TheDarklingWolf</color> - For creating Cataclysm:DDA as we know it.
-<color_yellow>Narc</color> - For setting up the automatic Jenkins build-bot.
-<color_yellow>yobbobanana</color> - For working as liason between translators and GitHub.
+코드 분석, 계획 수립 지원, git 자동화 재정비, 라이선스 정리, 아트 작업 지원, 주석 작성, 그리고 지워진 감사의 말 복원에 대해 Claude에게 특별히 감사드립니다.

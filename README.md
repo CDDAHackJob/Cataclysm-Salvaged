@@ -1,6 +1,6 @@
 <h1 align="center">The Cataclysm<small><br>
     Its been about two months since the end of the world.<br>
-    It was not just one apocalypse that hit, it was multiple, all at once.<br>
+    It was not just one apocalypse that hit; it was multiple, all at once.<br>
     Now they call it "The Cataclysm", and your shelter is no longer safe.
 </small></h1>
 <p align="center">

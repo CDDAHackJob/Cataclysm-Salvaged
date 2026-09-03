@@ -24,6 +24,6 @@
 
 <color_white>A: </color><color_light_gray>Yes, but not for a while yet. I intend to work my way up to a 1.0 release and save a copy of that as a branch.</color>
 
-<color_white>Q: </color><color_yellow>Does this mean that a build that isnt x.0 is an experimental?</color>
+<color_white>Q: </color><color_yellow>Does this mean that a build that isn't x.0 is an experimental?</color>
 
 <color_white>A: </color><color_light_gray>No. True experimental builds are their own branch tested privately. Anything released onto github as an x.yz release can be considered "mostly stable", but not as solid as I intend a full x.0 release to be.</color>

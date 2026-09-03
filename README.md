@@ -80,12 +80,12 @@ Anything I have is free to take per the licenses; just take a mention of me alon
 I will be doing the same for what I take from others.<br>
 Below are some inaccurate summaries of the main branches:
 
-<h3>DDA - <a href="https://github.com/cleverraven/cataclysm-dda">Dark Days Ahead</a> by CleverRaven</h3>
+<h3>DDA - <a href="https://github.com/cleverraven/cataclysm-dda">Dark Days Ahead</a> by TheDarklingWolf</h3>
 Cataclysm: Dark Days ahead is the oldest and biggest version of the game, and the source of all other branches. Its maintainers did the most to build things up, but eventually disagreements saw the other branches emerge. It seeks to discard the scifi and power of the old days, and make the setting more current and grittier, more focused on survival mechanics. It wants to be more like project Zomboid these days, and some heavy-handed deletions of old sections instead of fixing them saw it lose some support, causing TLG to emerge and Bright Nights to gain more popularity.<br>
 Despite all this, it has the biggest community, the most history, the most documentation, and for a long time was the most developed and polished.
 Every guide you will see on how to compile, troubleshoot, mod, and play Cataclysm will most likely originate from Dark Days Ahead.<br>
 
-<h3>BN - <a href="https://github.com/cataclysmbn/Cataclysm-BN">Bright Nights</a> by CleverRaven</h3>
+<h3>BN - <a href="https://github.com/cataclysmbn/Cataclysm-BN">Bright Nights</a> by scarf005, RobbieNeko, chaosvolt, and Oren Audeles</h3>
 The oldest branch, Cataclysm: Bright Nights originates from DDA's stable 0.D release and seeks to keep the setting as it was back then. Wilder, more scifi, more power for the player to go nuts, and less survival mechanics. For a long time it lagged behind CDDA, but it has seen a surge of development and is a great alternative.<br>
 
 <h3>TLG - <a href="https://github.com/Cataclysm-TLG/Cataclysm-TLG/">The Last Generation</a> by WormGirl</h3>
@@ -107,7 +107,7 @@ Press the `?` key, followed by the `1` key to see the full list of key commands.
 
 #### I've found a bug. What should I do?
 
-Please submit an issue on [our GitHub page](https://github.com/CDDAHackJob/Cataclysm-Salvaged/issues/) using [bug report template](https://github.com/CDDAHackJob/Cataclysm-Salvaged/issues/new?template=bug_report.md). If you're not able to, send an email to `kevin.granade@gmail.com`.
+Please submit an issue on [our GitHub page](https://github.com/CDDAHackJob/Cataclysm-Salvaged/issues/) using [bug report template](https://github.com/CDDAHackJob/Cataclysm-Salvaged/issues/new?template=bug_report.md). If you're not able to, send an email to `CDDA_HackJob@protonmail.com`.
 
 #### I would like to make a suggestion. What should I do?
 

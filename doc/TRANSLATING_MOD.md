@@ -11,7 +11,7 @@ This guide demonstrates how to translate a mod through an example. Suppose you h
     "authors": [ "..." ],
     "description": "This mod adds a book.",
     "category": "content",
-    "dependencies": [ "cdda" ]
+    "dependencies": [ "slvg" ]
   },
   {
     "type": "BOOK",

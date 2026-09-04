@@ -317,7 +317,7 @@ static const json_character_flag json_flag_WALL_CLING( "WALL_CLING" );
 static const json_character_flag json_flag_WEB_RAPPEL( "WEB_RAPPEL" );
 
 static const mod_id MOD_INFORMATION_Graphical_Overmap( "Graphical_Overmap" );
-static const mod_id MOD_INFORMATION_dda( "dda" );
+static const mod_id MOD_INFORMATION_slvg( "slvg" );
 
 static const mongroup_id GROUP_BLACK_ROAD( "GROUP_BLACK_ROAD" );
 
@@ -3223,7 +3223,7 @@ void game::load_world_modfiles()
     if( std::none_of( mods.begin(), mods.end(), []( const mod_id & e ) {
     return e->core;
 } ) ) {
-        mods.insert( mods.begin(), MOD_INFORMATION_dda );
+        mods.insert( mods.begin(), MOD_INFORMATION_slvg );
     }
 
     // this code does not care about mod dependencies,

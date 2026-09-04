@@ -285,7 +285,7 @@ TEST_CASE( "expected_weapon_dps", "[expected][dps]" )
 
     std::unordered_set<itype_id> tested;
     for( std::pair<const itype_id, double> &weap : test_data::expected_dps ) {
-        if( weap.first->src.empty() || weap.first->src.back().second.str() != "dda" ) {
+        if( weap.first->src.empty() || weap.first->src.back().second.str() != "slvg" ) {
             continue;
         }
         tested.emplace( weap.first );
@@ -295,7 +295,7 @@ TEST_CASE( "expected_weapon_dps", "[expected][dps]" )
     }
 
     for( const itype *it : item_controller->all() ) {
-        if( it->src.empty() || it->src.back().second.str() != "dda" ) {
+        if( it->src.empty() || it->src.back().second.str() != "slvg" ) {
             continue;
         }
         if( it->has_flag( flag_PSEUDO ) ) {

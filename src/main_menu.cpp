@@ -117,7 +117,7 @@ void demo_ui::run()
     }
 }
 
-static const mod_id MOD_INFORMATION_dda( "dda" );
+static const mod_id MOD_INFORMATION_slvg( "slvg" );
 
 // Menu column geometry. print_menu_items_column draws with it, print_menu hangs
 // the panel off it, and init_windows centres the column using the stride.
@@ -1225,7 +1225,7 @@ bool main_menu::opening_screen()
                             break;
                         }
                         world->active_mod_order.clear();
-                        world->active_mod_order.emplace_back( MOD_INFORMATION_dda );
+                        world->active_mod_order.emplace_back( MOD_INFORMATION_slvg );
                         world_generator->set_active_world( world );
                         try {
                             g->setup();

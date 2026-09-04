@@ -305,7 +305,7 @@ static void monster_check()
 TEST_CASE( "check_mon_id" )
 {
     for( const mtype &mon : MonsterGenerator::generator().get_all_mtypes() ) {
-        if( !mon.src.empty() && mon.src.back().second.str() != "dda" ) {
+        if( !mon.src.empty() && mon.src.back().second.str() != "slvg" ) {
             continue;
         }
         std::string mon_id = mon.id.str();

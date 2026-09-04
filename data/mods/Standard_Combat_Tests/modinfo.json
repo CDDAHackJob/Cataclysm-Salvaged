@@ -7,7 +7,7 @@
     "maintainers": [ "Venera3" ],
     "description": "A set of standard character loadouts to facilitate objective monster testing.  Disables all but the test scenarios.",
     "category": "misc",
-    "dependencies": [ "dda" ]
+    "dependencies": [ "slvg" ]
   },
   {
     "type": "SCENARIO_BLACKLIST",

@@ -1,9 +1,9 @@
 [
   {
     "type": "MOD_INFO",
-    "id": "dda",
-    "name": "Dark Days Ahead",
-    "description": "Core content for Cataclysm-DDA",
+    "id": "slvg",
+    "name": "Salvaged",
+    "description": "Core content for Cataclysm: Salvaged",
     "category": "content",
     "core": true,
     "path": "../../json"

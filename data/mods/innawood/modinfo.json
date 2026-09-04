@@ -7,7 +7,7 @@
     "maintainers": [ "Lightwave" ],
     "description": "An untouched land that mankind has yet to reach.  Disables most traces of civilization for that 'innawood' experience.",
     "category": "total_conversion",
-    "dependencies": [ "dda" ],
+    "dependencies": [ "slvg" ],
     "obsolete": false
   }
 ]

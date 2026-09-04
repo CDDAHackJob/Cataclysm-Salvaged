@@ -49,7 +49,7 @@
 #include "weather.h"
 #include "worldfactory.h"
 
-static const mod_id MOD_INFORMATION_dda( "dda" );
+static const mod_id MOD_INFORMATION_slvg( "slvg" );
 
 using name_value_pair_t = std::pair<std::string, std::string>;
 using option_overrides_t = std::vector<name_value_pair_t>;
@@ -330,8 +330,8 @@ int main( int argc, const char *argv[] )
 
     // Validate CDDA arguments
     mods = extract_mod_selection( mods_string );
-    if( std::find( mods.begin(), mods.end(), MOD_INFORMATION_dda ) == mods.end() ) {
-        mods.insert( mods.begin(), MOD_INFORMATION_dda ); // @todo move unit test items to core
+    if( std::find( mods.begin(), mods.end(), MOD_INFORMATION_slvg ) == mods.end() ) {
+        mods.insert( mods.begin(), MOD_INFORMATION_slvg ); // @todo move unit test items to core
     }
 
     if( user_dir.empty() ) {

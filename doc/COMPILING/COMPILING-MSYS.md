@@ -1,6 +1,6 @@
 # Compilation guide for 64-bit Windows (using MSYS2)
 
-This guide contains instructions for compiling Cataclysm-DDA on Windows under MSYS2. **PLEASE NOTE:** These instructions *are not intended* to produce a redistributable copy of CDDA. Please download the official builds from the website or [cross-compile from Linux](https://github.com/CleverRaven/Cataclysm-DDA/blob/master/doc/COMPILING/COMPILING.md#cross-compile-to-windows-from-linux) if that is your intention.
+This guide contains instructions for compiling Cataclysm-DDA on Windows under MSYS2. **PLEASE NOTE:** These instructions *are not intended* to produce a redistributable copy of CDDA. Please download the official builds from the website or [cross-compile from Linux](./COMPILING.md#cross-compile-to-windows-from-linux) if that is your intention.
 
 
 ## Prerequisites:
@@ -65,21 +65,21 @@ pacman -S git make ncurses-devel gettext-devel mingw-w64-ucrt-x86_64-{astyle,cca
 
 ## Cloning and compilation:
 
-1. Open MSYS2 and clone the Cataclysm-DDA repository:
+1. Open MSYS2 and clone the Cataclysm-Salvaged repository:
 
 ```bash
 cd /c/dev/
-git clone https://github.com/CleverRaven/Cataclysm-DDA.git ./Cataclysm-DDA
+git clone https://github.com/CDDAHackJob/Cataclysm-Salvaged.git ./Cataclysm-Salvaged
 ```
 
 **Note:** This will download the entire CDDA repository and all of its history (3GB). If you're just testing, you should probably add `--depth=1` (~350MB).
 
-**Note:** If you want to contribute to CDDA, see [example git workflow](https://github.com/CleverRaven/Cataclysm-DDA/blob/master/doc/CONTRIBUTING.md#example-workflow).
+**Note:** If you want to work on the game itself, see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 2. Compile with following command line:
 
 ```bash
-cd Cataclysm-DDA
+cd Cataclysm-Salvaged
 make -j$((`nproc`+0)) CCACHE=1 RELEASE=1 MSYS2=1 DYNAMIC_LINKING=1 SDL=1 TILES=1 SOUND=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0
 ```
 
@@ -87,7 +87,7 @@ You will receive warnings about unterminated character constants; they do not im
 
 This will compile a release version with Sound and Tiles support and all localization languages, skipping checks and tests, and using ccache for build acceleration. You can use other switches, but `MSYS2=1`, `DYNAMIC_LINKING=1` and probably `RELEASE=1` are required to compile without issues.
 
-**Note:** See `COMPILING-CMAKE.md` section [`CMake Build for MSYS2 (MinGW)`](https://github.com/CleverRaven/Cataclysm-DDA/blob/master/doc/COMPILING/COMPILING-CMAKE.md#cmake-build-for-msys2-mingw) for using the CMake build system.
+**Note:** See `COMPILING-CMAKE.md` section [`CMake Build for MSYS2 (MinGW)`](./COMPILING-CMAKE.md#cmake-build-for-msys2-mingw) for using the CMake build system.
 
 ## Running:
 

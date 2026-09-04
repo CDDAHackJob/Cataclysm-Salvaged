@@ -119,7 +119,7 @@ These steps allow you to cross-compile the object creator from Linux to Windows
 
   ![Image showing prompt to rebuild the devcontainer](../img/Devcontainer-Enter-Build-Command-Object-Creator-Terminal.png)
 
-  Note: This will only work if you first build the windows version of cataclysm-tiles as described in [Cross-compiling from Linux to Windows](https://github.com/CleverRaven/Cataclysm-DDA/blob/master/doc/COMPILING/COMPILING-DEVCONTAINER.md#cross-compiling-from-linux-to-windows).
+  Note: This will only work if you first build the windows version of cataclysm-tiles as described in [Cross-compiling from Linux to Windows](#cross-compiling-from-linux-to-windows).
 
   Note 2: If you want to make a clean built, enter `make clean-object_creator` in the terminal before you run the build command.
 

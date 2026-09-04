@@ -258,7 +258,7 @@ Mods can add entries to item groups by specifying a group with the same id that 
 
 In some places one can define an item group directly instead of giving the id of a group.  One cannot refer to that group elsewhere - it has no visible id (it has an unspecific/random id internally).  This is most useful when the group is very specific to the place it is used and won't ever appear anywhere else.
 
-As an example: monster death drops (`death_drops` entry in the `MONSTER` object, see [MONSTERS.md](https://github.com/CleverRaven/Cataclysm-DDA/blob/master/doc/MONSTERS.md) can do this.  If the monster is very specific (e.g. a special robot, a unique endgame monster), the item spawned upon its death won't (in that form) appear in any other group.
+As an example: monster death drops (`death_drops` entry in the `MONSTER` object, see [MONSTERS.md](./MONSTERS.md) can do this.  If the monster is very specific (e.g. a special robot, a unique endgame monster), the item spawned upon its death won't (in that form) appear in any other group.
 
 Therefore, this snippet:
 
@@ -322,4 +322,4 @@ You should not add items to the item group `EMPTY_GROUP`.  This group can be use
 
 When adding items to item groups, attempt to locate or create **SUS item groups.**  SUS item groups are collections that contain a reasonable realistic distribution of items that might spawn in a given piece of storage furniture.  SUS stands for "specific use storage."  One of the aims of organizing item groups into SUS groups is to promote reusable tables that can be maintained and extended.
 
-You can find existing SUS item groups at [/data/json/itemgroups/SUS](https://github.com/CleverRaven/Cataclysm-DDA/blob/master/data/json/itemgroups/SUS/).
+You can find existing SUS item groups at [/data/json/itemgroups/SUS](../data/json/itemgroups/SUS/).

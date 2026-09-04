@@ -62,7 +62,7 @@ You'll need to have these libraries and their development headers installed in o
 
 # Build Environment
 
-You can obtain the source code tarball for the latest version from [Github](https://github.com/CleverRaven/Cataclysm-DDA).
+You can obtain the source code tarball for the latest version from [Github](https://github.com/CDDAHackJob/Cataclysm-Salvaged).
 
 
 ## UNIX Environment
@@ -117,7 +117,7 @@ $ cmake-gui ..
 
 ## CMake Build for MSYS2 (MinGW)
 
-1. Follow [`COMPILING-MSYS.md`](https://github.com/CleverRaven/Cataclysm-DDA/blob/master/doc/COMPILING/COMPILING-MSYS.md)
+1. Follow [`COMPILING-MSYS.md`](./COMPILING-MSYS.md)
 
 2. Run
 ```
@@ -177,7 +177,7 @@ Open the Windows command line (or powershell) and set the environment variables 
 
 The `-j 2` flag controls build parallelism - you can omit it if you wish. The `/p:Configuration=Release` flag is passed directly to MSBuild and controls optimizations. If you omit it, the `Debug` configuration would be built instead. For powershell you'll need to have an extra ` -- ` after the first one.
 
-The resulting files will be put into a `Release` directory inside your source Cataclysm-DDA folder. To make them run you'd need to first move them to the source Cataclysm-DDA directory itself (so that the binary has access to the game data), and second put the required `.dll`s into the same folder - you can find those inside the directories for dev libraries under `lib/x86/` or `lib/x64/` (you likely need the `x86` ones even if you're on 64-bit machine).
+The resulting files will be put into a `Release` directory inside your source Cataclysm-Salvaged folder. To make them run you'd need to first move them to the source Cataclysm-Salvaged directory itself (so that the binary has access to the game data), and second put the required `.dll`s into the same folder - you can find those inside the directories for dev libraries under `lib/x86/` or `lib/x64/` (you likely need the `x86` ones even if you're on 64-bit machine).
 
 The copying of dlls is a one-time task, but you'd need to move the binary out of `Release/` each time it's built. To automate it a bit, you can configure cmake and set the desired binary's destination directory with `-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE=`  option (and similar for `CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG`).
 
@@ -227,7 +227,7 @@ $ cmake -DOPTION_NAME1=option_value1 [-DOPTION_NAME2=option_value2 [...]]
  * `DYNAMIC_LINKING=<boolean>`: Use dynamic linking. Or use static to remove MinGW dependency instead.
  * `GIT_BINARY=<str>` Override the default Git binary name or path.
 
-   So a CMake command for building Cataclysm-DDA in release mode with tiles and sound support will look as follows, provided it is run in the build directory located in the project.
+   So a CMake command for building Cataclysm-Salvaged in release mode with tiles and sound support will look as follows, provided it is run in the build directory located in the project.
 
    ```
    cmake ../ -DCMAKE_BUILD_TYPE=Release -DTILES=ON -DSOUND=ON

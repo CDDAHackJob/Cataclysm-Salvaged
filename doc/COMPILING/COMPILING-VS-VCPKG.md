@@ -47,16 +47,16 @@ git checkout 66444e13a86da7087ee24c342f91801cc6eb9877
 
 ## Cloning and compilation:
 
-1. Clone Cataclysm-DDA repository with following command line:
+1. Clone Cataclysm-Salvaged repository with following command line:
 
 ```cmd
-git clone https://github.com/CleverRaven/Cataclysm-DDA.git
-cd Cataclysm-DDA
+git clone https://github.com/CDDAHackJob/Cataclysm-Salvaged.git
+cd Cataclysm-Salvaged
 ```
 
 **Note:** This will download the entire CDDA repository; about three gigs of data. If you're just testing you should probably add `--depth=1`.
 
-**Note:** If you want to contribute to CDDA, see [example git workflow](https://github.com/CleverRaven/Cataclysm-DDA/blob/master/doc/CONTRIBUTING.md#example-workflow).
+**Note:** If you want to work on the game itself, see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 2. Open the provided solution (`msvc-full-features\Cataclysm-vcpkg-static.sln`) in `Visual Studio`.
 
@@ -117,13 +117,13 @@ It is possible to use ccache with Visual Studio and gain the same benefits as ot
 
 2. Extract the contents of the zip file somewhere convenient but not on $PATH.
 
-    - For example, if Cataclysm is checked out at `C:/dev/Cataclysm-DDA/`, then extract the folder and move the contents to `C:/dev/ccache/`. Verify the binary exists at `C:/dev/ccache/ccache.exe`.
+    - For example, if Cataclysm is checked out at `C:/dev/Cataclysm-Salvaged/`, then extract the folder and move the contents to `C:/dev/ccache/`. Verify the binary exists at `C:/dev/ccache/ccache.exe`.
 
 3. Create a copy of `ccache.exe` in the same folder, called `cl.exe`.
 
     - If you use the LLVM toolchain ("clang-cl.exe") when building, make another copy of `ccache.exe` called `clang-cl.exe`.
 
-4. Create a file called `Directory.Build.props` at the root of the Cataclysm-DDA folder with the following contents. If it already exists, merge it with the contents below. The value of `CDDA_CCACHE_PATH` should be the folder where you put `ccache.exe`. Assuming this path is `C:\dev\ccache\` (note: `\` vs `/` matters, you need to use `\` here):
+4. Create a file called `Directory.Build.props` at the root of the Cataclysm-Salvaged folder with the following contents. If it already exists, merge it with the contents below. The value of `CDDA_CCACHE_PATH` should be the folder where you put `ccache.exe`. Assuming this path is `C:\dev\ccache\` (note: `\` vs `/` matters, you need to use `\` here):
 
 ```
 <Project>
@@ -144,7 +144,7 @@ It is possible to use `llvm-lib.exe` and `lld-link.exe` to speed up your local b
   - Github: Download a release from https://github.com/llvm/llvm-project/releases. You typically want the installer from the `Assets` section called eg. `LLVM-16.0.6-win64.exe`, or whatever version you are downloading.
   - Visual Studio Installer: Open the Visual Studio Installer, select 'Modify' next to your install, click the 'Individual Components' section, search for 'C++ Clang Compiler for Windows', and make sure the result is selected.
 
-2. Create a file called `Directory.Build.props` at the root of the Cataclysm-DDA folder with the following contents.
+2. Create a file called `Directory.Build.props` at the root of the Cataclysm-Salvaged folder with the following contents.
   - If you installed a release directly from LLVM releases, use these settings. If you installed to a non default location, set the two `_PATH` variables to the path you installed LLVM to.
 ```
 <Project>

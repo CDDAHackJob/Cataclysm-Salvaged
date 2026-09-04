@@ -16,7 +16,7 @@ name: Text Changes Analyzer
 # TRIGGER. Upstream filtered on '**.json', the same inverted glob
 # assign_mission_target_needs_om_special.yml carried: under Forgejo's doublestar
 # matcher '**' is recursive only as a whole path component, so '**.json' means
-# root-level *.json -- CMakePresets.json and org.cataclysmdda.CataclysmDDA.json.
+# root-level *.json -- CMakePresets.json and the Flatpak manifest.
 # update_pot.sh extracts from `data` (extract_json_strings.py -i data), so the
 # filter matched two files the extractor never reads and missed all 5,379 it
 # does. JSON is most of the translatable text here, so as committed this check

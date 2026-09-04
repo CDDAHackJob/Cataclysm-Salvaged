@@ -12,7 +12,7 @@ name: Detect missions that are missing .start.assign_mission_target.om_special
 # Upstream's filter was '**.json', which on Forgejo is not loose but EXACTLY
 # INVERTED. Forgejo matches with doublestar, where '**' is recursive only as a
 # whole path component and otherwise degrades to '*', so '**.json' means
-# root-level *.json -- CMakePresets.json and org.cataclysmdda.CataclysmDDA.json.
+# root-level *.json -- CMakePresets.json and the Flatpak manifest.
 # The script reads neither: it scans ./data/ only, so the filter fired on the two
 # files it cannot see and never on the 5,377 it parses.
 #

@@ -10,7 +10,7 @@ name: Clang Build Analyzer
 #
 # Profiles BUILD TIME, not game performance: ranks slowest translation units,
 # heaviest headers, costliest template instantiations. Pairs with iwyu. Profiles
-# the clang/Linux build, not the MSVC one you wait on (CDDA_CI_PLAN.md 2.4).
+# the clang/Linux build, not the MSVC one you wait on (SLVG_CI_PLAN.md 2.4).
 #
 # DISPATCH ONLY. Upstream ran it on every push to master: a full -ftime-trace
 # build of game AND test suite (Makefile defaults TESTS=1), ~5 min, 774 MB of
@@ -32,7 +32,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: cdda-ci
+    runs-on: slvg-ci
 
     # Measured under the limits this job actually runs with: --cpuset-cpus=0-11
     # --memory=16g, 6 P-cores / 12 threads of an i7-12700K, the rest left for
@@ -53,7 +53,7 @@ jobs:
 
     # NO apt-get STEP AT ALL. Upstream installed `libncursesw5-dev gettext` with
     # no `apt-get update` -- fails outright on this image's empty cache, but the
-    # fix was never to add the update. Everything is baked into cdda-ci (11.4),
+    # fix was never to add the update. Everything is baked into slvg-ci (11.4),
     # the standing rule for Forgejo-side workflows: ncurses and gettext for the
     # game build, clang-21 because -ftime-trace is a clang feature g++ lacks, and
     # zlib1g-dev because src/cata_utility.cpp includes <zconf.h> -- absent here
@@ -65,7 +65,7 @@ jobs:
     # profiling four majors behind what the matrix builds with measures a build
     # nobody ships. SAFE because this emits a PROFILE, not a verdict -- a newer
     # clang makes a timing DIFFERENT, not wrong. clang-tidy is NOT moved with it:
-    # it gates, and 21 surfaces 746 new findings (CDDA_TOOLCHAIN_PLAN.md step 5,
+    # it gates, and 21 surfaces 746 new findings (SLVG_TOOLCHAIN_PLAN.md step 5,
     # open). CONSEQUENCE: profiles compare only against the same compiler;
     # anything measured before that date was taken under clang 14.
     #
@@ -91,7 +91,7 @@ jobs:
 
         # Attributes a saved profile to an exact toolchain: the image records
         # everything it bakes, with versions, generated at build time.
-        cat /etc/cdda-ci-versions
+        cat /etc/slvg-ci-versions
 
     # PINNED, where upstream cloned a moving branch. This clones third-party code
     # and then EXECUTES it against the repository -- the same trust decision as a
@@ -168,7 +168,7 @@ jobs:
         # std::get_temporary_buffer, and Clang blames the INSTANTIATION POINT --
         # our stable_sort calls -- so it reads as a defect in this tree. It is
         # not: Clang 21 x libstdc++ 12 fires it, Clang 21 x libstdc++ 14 is clean
-        # (CDDA_TOOLCHAIN_PLAN.md 1.2) -- what the matrix's two clang++-21 jobs
+        # (SLVG_TOOLCHAIN_PLAN.md 1.2) -- what the matrix's two clang++-21 jobs
         # exist to distinguish, and the Debian sanitizer job carries the same
         # downgrade. Clang 14 never emitted it, so this job was shielded by being
         # four majors behind rather than by being correct. -Wno-error=, not

@@ -33,7 +33,7 @@ jobs:
   check:
     name: Flake8 Python linting
 
-    runs-on: cdda-ci
+    runs-on: slvg-ci
 
     timeout-minutes: 15
 

@@ -11,7 +11,7 @@ name: Modern toolchain syntax check
 #
 # CHEAP INSURANCE AGAINST TOOLCHAIN DRIFT, not a code-quality check.
 #
-# Measured 2026-08-18 (CDDA_TOOLCHAIN_PLAN.md step 1): 606 of 606 translation
+# Measured 2026-08-18 (SLVG_TOOLCHAIN_PLAN.md step 1): 606 of 606 translation
 # units compile clean under GCC 16 trunk, and the same 606 under Clang 21 once
 # two math_parser fixes landed. That is a SNAPSHOT, and without a guard it
 # silently expires -- every commit written and checked only against GCC 12 can
@@ -22,7 +22,7 @@ name: Modern toolchain syntax check
 # plugin, needs no llvm-N-dev, and produces no binary. It answers exactly one
 # question -- "does this tree still compile under a modern toolchain?" That is
 # why it can use a compiler clang-tidy.yml cannot: clang-tidy stays pinned to
-# LLVM 17 because the plugin does not build past it (CDDA_TOOLCHAIN_PLAN.md 1.1),
+# LLVM 17 because the plugin does not build past it (SLVG_TOOLCHAIN_PLAN.md 1.1),
 # and this file loads no plugin.
 #
 # `-fsyntax-only` is what makes it affordable: no codegen, no optimisation, no
@@ -39,7 +39,7 @@ name: Modern toolchain syntax check
 # the whole test for belonging here: a syntax-only pass over a toolchain that is
 # also compiled and linked elsewhere is strictly weaker duplicate work.
 #
-# This is the syntax-only job of CDDA_CI_PLAN.md 11.11, and it lives here rather
+# This is the syntax-only job of SLVG_CI_PLAN.md 11.11, and it lives here rather
 # than in matrix.yml because the technique is the same one already implemented
 # here -- replay compile_commands.json with codegen stripped -- while the gha_*
 # scripts matrix.yml drives have no syntax-only path at all. Putting it there
@@ -102,7 +102,7 @@ jobs:
           # libstdc++ is a different pairing and is not covered here either; the
           # matrix's Ubuntu Clang job builds it.
 
-          # GCC 16 is a TRUNK SNAPSHOT, baked into cdda-ci-ubuntu from
+          # GCC 16 is a TRUNK SNAPSHOT, baked into slvg-ci-ubuntu from
           # ubuntu-toolchain-r/test. It self-reports as
           # "16.0.1 20260315 (experimental) [trunk r16-8100-...]".
           #
@@ -126,7 +126,7 @@ jobs:
           # on a RELEASE compiler and not on trunk. A release variant would keep
           # it with targeted exceptions; only a trunk one strips it wholesale.
           - title: GCC 16 trunk, Ubuntu, libstdc++ 16
-            host: cdda-ci-ubuntu
+            host: slvg-ci-ubuntu
             compiler: g++-16
             strip_werror: 1
 
@@ -137,7 +137,7 @@ jobs:
     timeout-minutes: 30
 
     steps:
-    # NO INSTALL STEP: g++-16 is baked into cdda-ci-ubuntu, and syntax checking
+    # NO INSTALL STEP: g++-16 is baked into slvg-ci-ubuntu, and syntax checking
     # needs no llvm-N-dev at all. This step only PROVES the compiler this variant
     # claims to test is the one actually present -- cheap, and it turns a
     # mis-tagged image into a clear message rather than a confusing wall of
@@ -187,7 +187,7 @@ jobs:
     #
     # -P4 matches the thermal ceiling established for this host: 4 parallel
     # compilers peak at 87 C with zero throttle events, 6 sustains ~90 C with 96
-    # (CDDA_CI_PLAN.md 11.5h).
+    # (SLVG_CI_PLAN.md 11.5h).
     #
     # tools/clang-tidy-plugin is excluded: it includes clang's own headers, which
     # need llvm-dev, and clang-tidy.yml already builds it.
@@ -244,4 +244,4 @@ jobs:
     # The deprecated-declarations rationale moved to matrix.yml's Clang 21 job
     # when this file's Clang variant was removed: the flag lives there now, and
     # the reasoning belongs with the flag rather than in the file that used to
-    # carry it. The controlled experiment behind it is CDDA_TOOLCHAIN_PLAN.md 1.2.
+    # carry it. The controlled experiment behind it is SLVG_TOOLCHAIN_PLAN.md 1.2.

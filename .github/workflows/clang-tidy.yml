@@ -122,7 +122,7 @@ jobs:
     # check runs on ready_for_review, and a draft is by definition unfinished.
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
 
-    runs-on: cdda-ci
+    runs-on: slvg-ci
 
     # NO MATRIX. Upstream split this into 'src' and 'other' subsets to fit
     # GitHub's per-job runtime limit. Here that costs real time: ONE runner, so
@@ -171,9 +171,9 @@ jobs:
     # LLVM 17 stays a workflow step rather than baked (11.4): version-pinned
     # toolchains are the standing exception, since baking makes every bump an
     # image rebuild. This is the LAST job on 17 -- bumping a GATE surfaces 746
-    # findings (CDDA_TOOLCHAIN_PLAN.md step 5, open). iwyu.yml moved to LLVM 21 on
+    # findings (SLVG_TOOLCHAIN_PLAN.md step 5, open). iwyu.yml moved to LLVM 21 on
     # 2026-08-22 and takes it from the image, so this step is shared with nothing.
-    # Everything else IS baked into cdda-ci: SDL2/FLAC/PulseAudio for TILES=1
+    # Everything else IS baked into slvg-ci: SDL2/FLAC/PulseAudio for TILES=1
     # SOUND=1, plus cmake, ninja, gettext, jq and lit.
     #
     # Two fixes to upstream's step, measured at 6 s total:
@@ -216,7 +216,7 @@ jobs:
     # dispatched run analyse everything (see the trigger comment).
     #
     # Absolute URL: actions/github-script is NOT on code.forgejo.org (checked),
-    # so a bare ref would fail at resolution (CDDA_CI_PLAN.md 11.5e).
+    # so a bare ref would fail at resolution (SLVG_CI_PLAN.md 11.5e).
     - name: determine changed files
       if: ${{ github.event_name == 'pull_request' }}
       uses: https://github.com/actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1

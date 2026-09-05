@@ -487,10 +487,27 @@ CXXFLAGS += $(WARNINGS) $(DEBUG) $(DEBUGSYMS) $(PROFILE) $(OTHERS)
 TOOL_CXXFLAGS = -DCATA_IN_TOOL
 
 BINDIST_EXTRAS += README.md data doc LICENSE.txt LICENSE-OFL-Terminus-Font.txt VERSION.txt $(JSON_FORMATTER_BIN)
-BINDIST    = $(BUILD_PREFIX)cataclysmdda-$(VERSION).tar.gz
-W32BINDIST = $(BUILD_PREFIX)cataclysmdda-$(VERSION).zip
-BINDIST_CMD    = tar --transform=s@^$(BINDIST_DIR)@cataclysmdda-$(VERSION)@ -czvf $(BINDIST) $(BINDIST_DIR)
-W32BINDIST_CMD = cd $(BINDIST_DIR) && zip -r ../$(W32BINDIST) * && cd $(BUILD_DIR)
+BINDIST    = $(BUILD_PREFIX)cataclysm-slvg-$(VERSION).tar.gz
+W32BINDIST = $(BUILD_PREFIX)cataclysm-slvg-$(VERSION).zip
+BINDIST_CMD    = tar --transform=s@^$(BINDIST_DIR)@cataclysm-slvg-$(VERSION)@ -czvf $(BINDIST) $(BINDIST_DIR)
+
+# 7-Zip, NOT Info-ZIP, and the binary name MUST be resolved rather than assumed.
+# Measured 2026-09-04: the Debian package `7zip` installs a DIFFERENT binary
+# depending on which suite it came from --
+#   bookworm (22.01+really26.02) -> /usr/bin/7zz          ONLY
+#   bpo12 backport (25.01)       -> /usr/bin/7z 7za 7zr,  NO 7zz
+# The CI image has the first, the operator's NAS has the second. Hardcoding
+# either name gives a build that packages locally and dies in CI, or the reverse,
+# from one identical line. Fall back to Info-ZIP's `zip` if neither is present.
+SEVENZIP := $(shell command -v 7zz 2>/dev/null || command -v 7z 2>/dev/null)
+ifeq ($(SEVENZIP),)
+  W32BINDIST_CMD = cd $(BINDIST_DIR) && zip -r ../$(W32BINDIST) * && cd $(BUILD_DIR)
+else
+  # -tzip keeps the output a STANDARD zip. Windows Explorer opens .zip natively on
+  # every version; native .7z support only arrived in Windows 11, so shipping .7z
+  # would make Windows 10 users install an archiver before they can play.
+  W32BINDIST_CMD = cd $(BINDIST_DIR) && $(SEVENZIP) a -tzip -mx=9 ../$(W32BINDIST) * && cd $(BUILD_DIR)
+endif
 
 
 # Check if called without a special build target
@@ -1023,7 +1040,7 @@ clean: clean-tests clean-object_creator clean-pch clean-lang
 	rm -rf *$(TARGET_NAME) *$(TILES_TARGET_NAME)
 	rm -rf *$(TILES_TARGET_NAME).exe *$(TARGET_NAME).exe *$(TARGET_NAME).a
 	rm -rf *obj *objwin
-	rm -rf *$(BINDIST_DIR) *cataclysmdda-*.tar.gz *cataclysmdda-*.zip
+	rm -rf *$(BINDIST_DIR) *cataclysm-slvg-*.tar.gz *cataclysm-slvg-*.zip
 	rm -f $(SRC_DIR)/version.h $(SRC_DIR)/prefix.h
 	rm -f $(CHKJSON_BIN)
 	rm -f $(TEST_MO)
@@ -1040,7 +1057,7 @@ distclean:
 bindist: $(BINDIST)
 
 ifeq ($(TARGETSYSTEM), LINUX)
-DATA_PREFIX=$(DESTDIR)$(PREFIX)/share/cataclysm-s/
+DATA_PREFIX=$(DESTDIR)$(PREFIX)/share/cataclysm-slvg/
 BIN_PREFIX=$(DESTDIR)$(PREFIX)/bin
 LOCALE_DIR=$(DESTDIR)$(PREFIX)/share/locale
 SHARE_DIR=$(DESTDIR)$(PREFIX)/share
@@ -1075,7 +1092,7 @@ endif
 endif
 
 ifeq ($(TARGETSYSTEM), CYGWIN)
-DATA_PREFIX=$(DESTDIR)$(PREFIX)/share/cataclysm-s/
+DATA_PREFIX=$(DESTDIR)$(PREFIX)/share/cataclysm-slvg/
 BIN_PREFIX=$(DESTDIR)$(PREFIX)/bin
 LOCALE_DIR=$(DESTDIR)$(PREFIX)/share/locale
 SHARE_DIR=$(DESTDIR)$(PREFIX)/share

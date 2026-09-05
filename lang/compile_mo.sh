@@ -29,7 +29,7 @@ then
     do
         f="lang/po/${n}.po"
         mkdir -p $LOCALE_DIR/${n}/LC_MESSAGES
-        msgfmt -f -o $LOCALE_DIR/${n}/LC_MESSAGES/cataclysm-s.mo ${f}
+        msgfmt -f -o $LOCALE_DIR/${n}/LC_MESSAGES/cataclysm-slvg.mo ${f}
     done
 else
     # if nothing specified, compile .mo file for every .po file in lang/po
@@ -37,6 +37,6 @@ else
     do
         n=`basename $f .po`
         mkdir -p $LOCALE_DIR/${n}/LC_MESSAGES
-        msgfmt -f -o $LOCALE_DIR/${n}/LC_MESSAGES/cataclysm-s.mo ${f}
+        msgfmt -f -o $LOCALE_DIR/${n}/LC_MESSAGES/cataclysm-slvg.mo ${f}
     done
 fi

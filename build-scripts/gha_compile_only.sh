@@ -10,7 +10,7 @@ set -exo pipefail
 # the last value on the good side of a measured discontinuity: at 4 the scheduler
 # migrates work between cores and the die cools between bursts (87 C, zero
 # throttle events); at 6 it parks the load on the same P-cores and holds them hot
-# (~90 C sustained, 96 throttle events). See CDDA_CI_PLAN.md 11.5h.
+# (~90 C sustained, 96 throttle events). See SLVG_CI_PLAN.md 11.5h.
 #
 # RAISING IT WAS TRIED ON COMPILES AND REJECTED. The hope was that a compile's
 # link and I/O phases let the die breathe where clang-tidy's continuous frontends
@@ -19,9 +19,9 @@ set -exo pipefail
 #
 # The default lives in the script rather than the workflow so that running this
 # by hand on the box also gets the safe value, matching what was done for
-# build-scripts/clang-tidy.sh (CLANG_TIDY_JOBS). CDDA_BUILD_JOBS overrides it
+# build-scripts/clang-tidy.sh (CLANG_TIDY_JOBS). SLVG_BUILD_JOBS overrides it
 # per job.
-num_jobs=${CDDA_BUILD_JOBS:-4}
+num_jobs=${SLVG_BUILD_JOBS:-4}
 
 # We might need binaries installed via pip, so ensure that our personal bin dir is on the PATH
 export PATH=$HOME/.local/bin:$PATH

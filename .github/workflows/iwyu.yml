@@ -14,7 +14,7 @@ name: include-what-you-use
 # ~HackJob
 #
 # Unused #includes, and symbols arriving transitively. Needs a front end, not grep.
-# Rebuilt, not retargeted (CDDA_CI_PLAN.md 2.1): upstream's version targets a
+# Rebuilt, not retargeted (SLVG_CI_PLAN.md 2.1): upstream's version targets a
 # newer CDDA and never ran here. 197 s end to end, measured five times.
 #
 # ANALYSES ONE CONFIG: TILES=0 SOUND=0 LOCALIZE=0. Cannot reason about the
@@ -33,7 +33,7 @@ permissions:
 
 jobs:
   iwyu:
-    runs-on: cdda-ci
+    runs-on: slvg-ci
 
     # 197 s measured, five times, within a second of each other. The bound caps
     # a hang; it is not an estimate of the work.
@@ -46,7 +46,7 @@ jobs:
 
     # LLVM 21 (was 17). IWYU must match its clang exactly: clang_21 branch goes
     # with llvm-21, nothing else. clang-tidy stays on 17 -- bumping a GATE
-    # surfaces 746 findings (CDDA_TOOLCHAIN_PLAN.md step 5); this job is advisory.
+    # surfaces 746 findings (SLVG_TOOLCHAIN_PLAN.md step 5); this job is advisory.
     # No apt-get: LLVM 21 is baked (11.4f). Assert it -- absence otherwise
     # surfaces as a confusing cmake error several steps on.
     - name: verify LLVM 21 is present
@@ -110,7 +110,7 @@ jobs:
 
     # ADVISORY. This never fails on findings -- there are findings in most files,
     # and an unused #include breaks nothing. It fails only if IWYU itself could
-    # not run, which is the distinction CDDA_CI_PLAN.md 11.6 item 7 insists on:
+    # not run, which is the distinction SLVG_CI_PLAN.md 11.6 item 7 insists on:
     # "found nothing" and "did not run" must not look alike.
     #
     # tools/iwyu/cata.imp is the only mapping passed because it is a ref file --

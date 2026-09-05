@@ -11,11 +11,11 @@ else
 	endif
 endif
 
-MO := $(patsubst %,$(MO_DIR)/%/LC_MESSAGES/cataclysm-s.mo,$(PO))
+MO := $(patsubst %,$(MO_DIR)/%/LC_MESSAGES/cataclysm-slvg.mo,$(PO))
 
 all: $(MO)
 
-$(MO_DIR)/%/LC_MESSAGES/cataclysm-s.mo: $(PO_DIR)/%.po
+$(MO_DIR)/%/LC_MESSAGES/cataclysm-slvg.mo: $(PO_DIR)/%.po
 	mkdir -p $$(dirname $@)
 	msgfmt -f -o $@ $<
 

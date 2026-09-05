@@ -66,7 +66,7 @@ permissions:
 
 jobs:
   analyze-text-changes:
-    runs-on: cdda-ci
+    runs-on: slvg-ci
 
     # Generous against a measured cost of well under a minute: update_pot.sh is
     # ~3 s and runs twice on a pull request, once on a dispatch, and the depth-2
@@ -102,7 +102,7 @@ jobs:
     # And importing spell_checker loads pyspellchecker and reads the dictionary,
     # making this the cheapest check that the job is on an image that has them.
     # After the .pot generations it would cost two full extractions before
-    # reporting a missing module; here a runner on a stale cdda-ci tag fails in
+    # reporting a missing module; here a runner on a stale slvg-ci tag fails in
     # seconds and names the cause. Not hypothetical -- the config.yaml image line
     # has been missed on every rebuild so far (11.5a item 1).
     - name: run the spell checker's tokenizer tests

@@ -19,7 +19,7 @@ name: General build matrix
 # THE ONLY WORKFLOW THAT BUILDS AND RUNS THE GAME. Everything else in this set
 # inspects the tree; this compiles it, links it, and executes the test suite.
 #
-# REWRITTEN, NOT RETARGETED (CDDA_CI_PLAN.md 11.11). Of upstream-2024's seven
+# REWRITTEN, NOT RETARGETED (SLVG_CI_PLAN.md 11.11). Of upstream-2024's seven
 # variants, 2 named retired runner images, 4 named compilers Debian 12 cannot
 # provide, and 1 was macOS -- nothing survived untouched, so the list was rebuilt
 # from upstream's stated strategy rather than patched toward it.
@@ -35,15 +35,24 @@ name: General build matrix
 #   Debian   g++-11        Curses   LOCALIZE=0, PCH=0        launch only
 #   Debian   g++-12        Tiles+Snd CMAKE=1                 narrow spec
 #   Debian   clang++-21    Tiles    SANITIZE=addr,undef      YES
-#   Debian   g++-12 MinGW  Tiles+Snd cross, wine             YES
+#   Debian   g++-12 MinGW  Tiles+Snd cross, wine, bindist    YES  <- Windows release
 #   Ubuntu   g++-14        Curses   LTO=1, TEST_STAGE, MODS  YES
 #   Ubuntu   g++-14        Tiles    LTO=1, TESTS=0           -
 #   Ubuntu   clang++-21    Tiles    -                        -
-#   Debian   g++-12        Tiles+Snd bindist                 YES  <- last, on purpose
+#   Debian   g++-12        Tiles+Snd bindist                 YES  <- Linux release, last
 #
 # ONE RUNNER, CAPACITY 1: all eight SERIALIZE, so ORDER IS EXECUTION ORDER. The
-# release candidate runs LAST, giving its artifact every other toolchain's
+# Linux release candidate runs LAST, giving its artifact every other toolchain's
 # verdict behind it rather than in front. Parallelism exists only inside a job.
+#
+# TWO JOBS NOW CARRY `bindist`, AND THE ORDERING PROPERTY ONLY HOLDS FOR ONE OF
+# THEM. The MinGW job is 4th, so the Windows .zip is produced with three jobs'
+# verdicts behind it, not seven -- it is emitted before the sanitizer pair, the
+# LTO/ODR job and the release build have run. That is a deliberate trade, not an
+# oversight: moving MinGW last would put the two artifacts back-to-back and give
+# up the position where a cross-compile failure surfaces early and cheaply.
+# **Do not treat the Windows artifact as fully vetted until the whole matrix is
+# green** -- it is a candidate, and the run it came from is what qualifies it.
 #
 # COVERAGE, reading the table: each UI backend meets an old compiler and a new
 # one, and the 12,673 lines of TILES-conditional code are reached by LTO/ODR as
@@ -133,7 +142,7 @@ jobs:
           # terminal. Tiles is unaffected (SDL initialises headlessly), which is
           # why the release job can run it.
           - title: GCC 11, Debian, Curses, LOCALIZE=0, PCH=0
-            host: cdda-ci
+            host: slvg-ci
             compiler: g++-11
             tiles: 0
             sound: 0
@@ -148,11 +157,11 @@ jobs:
           # sanitizer and Ubuntu Curses jobs already run these sources) but
           # because the CMake branch of gha_test_only.sh was DEAD CODE: its
           # `parallel` invocation, run_test wrapper, sed prefixing and exit-code
-          # plumbing had never once executed (CDDA_CI_PLAN.md gap 2). A narrow
+          # plumbing had never once executed (SLVG_CI_PLAN.md gap 2). A narrow
           # spec exercises all of it in minutes instead of an hour, and this is
           # the only job that runs a CMake-built binary at all.
           - title: GCC 12, Debian, Tiles, Sound, CMake
-            host: cdda-ci
+            host: slvg-ci
             compiler: g++-12
             tiles: 1
             sound: 1
@@ -173,7 +182,7 @@ jobs:
           # abandoning stable sorting. Clang blames the INSTANTIATION POINT, your
           # stable_sort call, so it reads as a defect here; GCC never shows it,
           # suppressing diagnostics that arise in its own headers. Isolated by
-          # controlled experiment (CDDA_TOOLCHAIN_PLAN.md 1.2):
+          # controlled experiment (SLVG_TOOLCHAIN_PLAN.md 1.2):
           #   Clang 21 x libstdc++ 12  -> fires, 14 diagnostics
           #   Clang 21 x libstdc++ 14  -> clean
           # Same compiler; the standard library is the variable. So the flag
@@ -183,7 +192,7 @@ jobs:
           # project code is not hidden by the flag that exists to tolerate the
           # standard library's own.
           - title: Clang 21, Debian, Tiles, ASan+UBSan
-            host: cdda-ci
+            host: slvg-ci
             compiler: clang++-21
             tiles: 1
             sound: 0
@@ -205,7 +214,7 @@ jobs:
           # in by the posix thread model and NOT covered by -static-libgcc
           # -static-libstdc++). A missing DLL exits 53 with no message.
           - title: GCC 12, Debian cross-compile to MinGW-Win64, Tiles, Sound
-            host: cdda-ci
+            host: slvg-ci
             compiler: g++
             cross: x86_64-w64-mingw32-
             wine: wine64
@@ -228,6 +237,29 @@ jobs:
             static: 1
             ldflags: -static-libgcc -static-libstdc++
             run_tests: 1
+            # THE WINDOWS RELEASE ARTIFACT. Added 2026-09-04, and it is the whole
+            # Windows release path: with macOS and Android dropped, and MSVC not
+            # being the toolchain the operator builds with, this cross build is
+            # what ships to Windows users. `make bindist` needs no Windows-specific
+            # wiring -- Makefile:617-622 switches BINDIST/BINDIST_CMD on
+            # TARGETSYSTEM by itself, so this job emits a .zip where the Linux one
+            # emits a .tar.gz, from the same target.
+            #
+            # THREE THINGS HAD TO BE TRUE FIRST, and none was: `bindist` was set on
+            # the Linux job alone; the image carried no zip archiver at all (`tar`
+            # yes, nothing else -- so this job could pass 1118 tests under wine and
+            # still die at packaging); and the upload glob matched only
+            # `*.tar.gz`, which would have gone green having uploaded nothing.
+            #
+            # WHAT IT COSTS: `$(BINDIST)` depends on `distclean` (Makefile:1129),
+            # which sounds like a recompile and is not -- distclean removes only
+            # `bindist/`, `save/`, `lang/mo` and four generated `data/*.txt`
+            # (Makefile:1048). Object files and the binary survive, so THE ARTIFACT
+            # IS THE BINARY THAT PASSED THE TESTS, not a rebuild of it. The added
+            # work is re-running msgfmt over the .po files and building
+            # `tools/format/json_formatter.exe` (Makefile:1206, a bindist
+            # prerequisite via BINDIST_EXTRAS) with the cross compiler.
+            bindist: 1
             id: debian-mingw-gcc-12
 
           # The modern matched pair -- compiler and libstdc++ from one release --
@@ -240,7 +272,7 @@ jobs:
           # in the TEST script, so a job that does not run tests would silently
           # discard half of it.
           - title: GCC 14, Ubuntu, Curses, LTO, ODR
-            host: cdda-ci-ubuntu
+            host: slvg-ci-ubuntu
             compiler: g++-14
             tiles: 0
             sound: 0
@@ -277,7 +309,7 @@ jobs:
           # `ifndef`-guarded (Makefile 212-213), so the environment genuinely
           # sets it -- unlike LOCALIZE.
           - title: GCC 14, Ubuntu, Tiles, LTO, ODR
-            host: cdda-ci-ubuntu
+            host: slvg-ci-ubuntu
             compiler: g++-14
             tiles: 1
             sound: 0
@@ -296,7 +328,7 @@ jobs:
           # cannot take the Ubuntu Tiles LTO job's role, and the runtime it would
           # exercise is already covered by Ubuntu Curses on the same stdlib.
           - title: Clang 21, Ubuntu, Tiles
-            host: cdda-ci-ubuntu
+            host: slvg-ci-ubuntu
             compiler: clang++-21
             tiles: 1
             sound: 0
@@ -324,7 +356,7 @@ jobs:
           # tree can build and test cleanly and still fail to package (missing
           # data file, bad path), and nothing else here would notice.
           - title: GCC 12, Debian, Tiles, Sound, RELEASE
-            host: cdda-ci
+            host: slvg-ci
             compiler: g++-12
             tiles: 1
             sound: 1
@@ -398,8 +430,8 @@ jobs:
       #
       # Per-variant override kept: `build_jobs` on a variant wins, so one job can
       # be capped without moving the rest. If this expression ever yields empty,
-      # `gha_compile_only.sh`'s own `${CDDA_BUILD_JOBS:-4}` lands on the same 4.
-      CDDA_BUILD_JOBS: ${{ matrix.build_jobs || 4 }}
+      # `gha_compile_only.sh`'s own `${SLVG_BUILD_JOBS:-4}` lands on the same 4.
+      SLVG_BUILD_JOBS: ${{ matrix.build_jobs || 4 }}
 
       # 3, AND RAISING IT DOES NOTHING. `parallel` is fed exactly two Catch2 specs
       # (`[slow] ~starting_items` and `~[slow] ~[.],starting_items`), so two run
@@ -421,13 +453,13 @@ jobs:
     timeout-minutes: 120
 
     steps:
-    # NO apt-get. LLVM 21 is baked into cdda-ci (11.4f) -- clang-21,
+    # NO apt-get. LLVM 21 is baked into slvg-ci (11.4f) -- clang-21,
     # libclang-rt-21-dev and llvm-21 all arrive with the image, which ASSERTS
     # each of them, so the install this step used to carry was removed
     # 2026-08-22. The Dockerfile owns why each package is there, including why
     # compiler-rt is not optional for a job that LINKS a sanitized binary.
     #
-    # The baked clang is pinned to match cdda-ci-ubuntu (both 21.1.8). If the two
+    # The baked clang is pinned to match slvg-ci-ubuntu (both 21.1.8). If the two
     # ever drift, the differential pair above stops being single-variable and
     # quietly becomes two unrelated jobs.
     #
@@ -445,7 +477,7 @@ jobs:
     # difference between tracing the relic UB to its procgen call site and
     # knowing only that something divided by zero.
     - name: point the sanitizers at the symbolizer (Debian clang only)
-      if: ${{ matrix.host == 'cdda-ci' && startsWith(matrix.compiler, 'clang') }}
+      if: ${{ matrix.host == 'slvg-ci' && startsWith(matrix.compiler, 'clang') }}
       run: |
         set -eu
         clang++-21 --version | head -1
@@ -571,11 +603,17 @@ jobs:
           return "$rc"
         }
         run_bounded 60 "$game" --version
-        # `dda` IS MANDATORY. --check-mods declares a minimum argument count of 1
+        # A MOD ID IS MANDATORY. --check-mods declares a minimum argument count of 1
         # (main.cpp:331) even though its help text reads "[mod…]", so a bare
         # `--check-mods` exits 1 with "Missing expected argument to command line
         # parameter --check-mods" -- measured 2026-08-21, it failed this job.
-        # `dda` is the core content id (game.cpp:320's MOD_INFORMATION_dda).
+        #
+        # `slvg` is the core content id (game.cpp:320's MOD_INFORMATION_slvg,
+        # data/mods/slvg/modinfo.json). IT WAS `dda` UNTIL 2026-09-04 AND THIS LINE
+        # WAS NOT UPDATED WITH IT: commit 5b9df9f726 moved the id across 71 files
+        # including the test harness, but a workflow is outside what a source-tree
+        # sweep greps, so this job went on naming a mod that no longer existed.
+        # Any rebrand touching a content id has to reach in here too.
         #
         # This is a real data gate, not a smoke test: main.cpp:810 exits non-zero
         # if check_mod_data fails OR if any debugmsg was observed while loading.
@@ -603,7 +641,7 @@ jobs:
           # No log dump here: the post-mortem step at the end of this job dumps
           # every *.log in the workspace on ANY failure, so one mechanism covers
           # this and every other step.
-          run_bounded 900 "$game" --check-mods dda
+          run_bounded 900 "$game" --check-mods slvg
         fi
 
     # PACKAGING. A tree can compile and pass its suite and still fail to package
@@ -628,7 +666,7 @@ jobs:
         commit ref: ${{ github.ref_name }}
         EOL
         make bindist
-        ls -l cataclysmdda-*.tar.gz
+        ls -l cataclysm-slvg-*.tar.gz cataclysm-slvg-*.zip 2>/dev/null || ls -l cataclysm-slvg-*
 
     # The one artifact produced by a SUCCESSFUL run. Everything else uploaded here
     # is failure wreckage; this is the candidate itself.
@@ -636,8 +674,10 @@ jobs:
       if: ${{ matrix.bindist == 1 && success() }}
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
-        name: cataclysmdda-${{ matrix.id }}
-        path: cataclysmdda-*.tar.gz
+        name: cataclysm-slvg-${{ matrix.id }}
+        path: |
+          cataclysm-slvg-*.tar.gz
+          cataclysm-slvg-*.zip
 
     # WHATEVER FAILED, SAY WHY. stdout is the ONLY channel that survives into a
     # run log -- everything else in the container dies with it -- so evidence

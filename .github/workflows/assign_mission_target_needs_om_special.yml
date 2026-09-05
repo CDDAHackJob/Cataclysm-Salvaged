@@ -43,9 +43,9 @@ permissions:
 
 jobs:
   run-the-tool:
-    runs-on: cdda-ci
+    runs-on: slvg-ci
 
-    # The check itself is 3.2s (measured on cdda-ci:6). This bound is for
+    # The check itself is 3.2s (measured on slvg-ci:6). This bound is for
     # checkout of a repository this size, and to cap a hang; it is not a
     # statement about the script's cost.
     timeout-minutes: 15

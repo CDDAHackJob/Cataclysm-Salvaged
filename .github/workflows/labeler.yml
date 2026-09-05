@@ -46,7 +46,7 @@ jobs:
       contents: read        # read the changed-file list
       pull-requests: write  # apply labels to the PR
 
-    runs-on: cdda-ci
+    runs-on: slvg-ci
 
     # NOT one API call -- the changed-file list is PAGINATED
     # (`client.paginate(pulls.listFiles)`), ~1 request per 100 files. Nothing for

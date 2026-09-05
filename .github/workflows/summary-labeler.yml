@@ -66,7 +66,7 @@ jobs:
       contents: read        # repos.getContent, to fetch the config
       pull-requests: write  # issues.addLabels, to apply them
 
-    runs-on: cdda-ci
+    runs-on: slvg-ci
 
     # Two API calls plus regex over one PR body -- getContent for the config,
     # addLabels for the result. Unlike labeler.yml it does NOT page a changed-file
@@ -81,7 +81,7 @@ jobs:
       # all. Dropping it saves a full clone of a 12 GB repo to read one YAML file.
       #
       # PINNED TO v4.0.0, FORCED BY THE RUNNER IMAGE. v5.0.0 declares
-      # `runs: using: node24`; cdda-ci ships node 20.20.2, so v5 cannot execute
+      # `runs: using: node24`; slvg-ci ships node 20.20.2, so v5 cannot execute
       # here. v3.0.0 and v4.0.0 declare node20, and v4.0.0 is the newest that
       # runs -- with the config schema this repo has (`version: t.literal('v1')`
       # with a `body` matcher, checked at the tag).

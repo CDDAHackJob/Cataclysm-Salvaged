@@ -41,8 +41,8 @@ env:
   BACKTRACE: 1
   # Compressed size ~1GB based on observations
   CCACHE_LIMIT: 8GB
-  CDDA_CCACHE_PATH: ${{ github.workspace }}\ccache\
-  CDDA_USE_CCACHE: true
+  SLVG_CCACHE_PATH: ${{ github.workspace }}\ccache\
+  SLVG_USE_CCACHE: true
   # There's not enough disk space to build both release and debug versions of
   # our dependencies, so we hack the triplet file to build only release versions
   # Have to use github.workspace because runner namespace isn't available yet.
@@ -105,7 +105,7 @@ jobs:
         unzip ccache-4.6.1-windows-x86_64.zip
         cp ccache-4.6.1-windows-x86_64/ccache.exe ccache-4.6.1-windows-x86_64/cl.exe
         cp ccache-4.6.1-windows-x86_64/ccache.exe ccache-4.6.1-windows-x86_64/clang-cl.exe
-        mv ccache-4.6.1-windows-x86_64 ${{ env.CDDA_CCACHE_PATH }}
+        mv ccache-4.6.1-windows-x86_64 ${{ env.SLVG_CCACHE_PATH }}
 
     - name: Get ccache vars
       id: get-vars
@@ -125,9 +125,9 @@ jobs:
 
     - name: Configure ccache
       run: |
-        ${{ env.CDDA_CCACHE_PATH }}\ccache.exe -M 10G
-        ${{ env.CDDA_CCACHE_PATH }}\ccache.exe -s -v
-        ${{ env.CDDA_CCACHE_PATH }}\ccache.exe -z
+        ${{ env.SLVG_CCACHE_PATH }}\ccache.exe -M 10G
+        ${{ env.SLVG_CCACHE_PATH }}\ccache.exe -s -v
+        ${{ env.SLVG_CCACHE_PATH }}\ccache.exe -z
 
     - name: Symlink intermediates to C
       run: |
@@ -141,15 +141,15 @@ jobs:
     - name: Post-build ccache manipulation
       if: ${{ !failure() }}
       run: |
-        ${{ env.CDDA_CCACHE_PATH }}\ccache.exe -s -v
-        ${{ env.CDDA_CCACHE_PATH }}\ccache.exe -M ${{ env.CCACHE_LIMIT }}
-        ${{ env.CDDA_CCACHE_PATH }}\ccache.exe -c
-        ${{ env.CDDA_CCACHE_PATH }}\ccache.exe -s -v
+        ${{ env.SLVG_CCACHE_PATH }}\ccache.exe -s -v
+        ${{ env.SLVG_CCACHE_PATH }}\ccache.exe -M ${{ env.CCACHE_LIMIT }}
+        ${{ env.SLVG_CCACHE_PATH }}\ccache.exe -c
+        ${{ env.SLVG_CCACHE_PATH }}\ccache.exe -s -v
 
     - name: clear ccache on PRs
       if: ${{ github.ref_name != 'master' }}
       run: |
-        ${{ env.CDDA_CCACHE_PATH }}\ccache.exe -C
+        ${{ env.SLVG_CCACHE_PATH }}\ccache.exe -C
 
     - name: Dump vcpkg logs if build failed
       if: failure()

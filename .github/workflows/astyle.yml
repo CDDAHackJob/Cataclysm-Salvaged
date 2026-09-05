@@ -35,7 +35,7 @@ jobs:
   astyle-code:
     name: astyle check
 
-    runs-on: cdda-ci
+    runs-on: slvg-ci
 
     # ~6 s for the whole job. The default is 360 minutes, and this runner shares
     # the box with Samba and the pool, so a wedged job would hold it for six hours.

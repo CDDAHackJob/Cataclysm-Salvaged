@@ -40,7 +40,7 @@ jobs:
   style-json:
     name: JSON style check
 
-    runs-on: cdda-ci
+    runs-on: slvg-ci
 
     # ~7 s for the whole job: the g++ build of json_formatter plus all 5,379
     # files. The default is 360 minutes, and this runner shares the box with

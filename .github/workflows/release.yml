@@ -1,342 +1,210 @@
-name: "Experimental Release"
-concurrency: release
-on:
-  push:
-    branches:
-      - master
-    paths:
-      - '.github/workflows/release.yml'
-      - 'android/**'
-      - 'build-data/**'
-      - 'build-scripts/generate-release-notes.js'
-      - 'cataclysm-launcher'
-      - 'data/**'
-      - 'doc/**'
-      - 'gfx/**'
-      - 'lang/po/*.po'
-      - 'LICENSE*'
-      - 'Makefile'
-      - 'README*'
-      - 'src/**'
+name: "Package release artifacts"
 
-env:
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  REPOSITORY_NAME: ${{ github.event.repository.name }}
+# HackJob's Summary:
+# Workflow rebuilt and tested extensively with Claude Opus.
+# Its comments are condensed into "caveman" claude and may be a bit confusing.
+# Some sections will be referring to items within a plan document not in the repo.
+# These are notes for myself and Claude.
+# This file no longer builds or publishes anything -- it only PACKAGES what
+# matrix.yml already built and tested. See below for why.
+# ~HackJob
+#
+# WHAT THIS IS: the last step of a release run. matrix.yml builds and tests, then
+# calls this file to turn its three `bindist` outputs into three uniformly named,
+# uniformly structured .zip files. The operator downloads one artifact and
+# attaches its contents to a GitHub Release BY HAND.
+#
+# WHAT THIS IS NOT, AND THE WHOLE FILE DEPENDS ON IT: it does not build, it does
+# not publish, and it holds no credential. The previous version of this file was
+# upstream's: a 13-entry build matrix ending in `gh release create --prerelease`
+# under `permissions: write-all`. EVERY ONE of those 13 entries was dead -- 7
+# named retired runner images (windows-2019, ubuntu-20.04, macos-12), 5 targeted
+# platform directories this tree no longer has (android/, build/osx), and the
+# WebAssembly entry was dropped outright (SLVG_CI_PLAN.md 11.8). None of it was
+# repairable, so none of it was repaired.
+#
+# WHY PACKAGING LIVES HERE AND BUILDING DOES NOT (11.9a, "Option A"): releases are
+# built on the NAS and attached to GitHub by hand, so no GitHub-side job can reach
+# the artifacts and no credential ever lands on this box. Packaging is therefore
+# the only release work a workflow can usefully do.
+#
+# WHY IT IS CALLED BY matrix.yml RATHER THAN RUN ON ITS OWN. The obvious design --
+# a manual workflow that finds the last successful matrix run and downloads its
+# artifacts -- CANNOT WORK ON THIS FORGEJO. Measured 2026-09-05 against
+# swagger.v1.json on the live instance (15.0.6): listing runs works
+# (`GET /repos/{owner}/{repo}/actions/runs`, with status/workflow_id/ref filters),
+# but ALL THREE artifact endpoints are ABSENT -- /actions/runs/{id}/artifacts,
+# /actions/artifacts, /actions/artifacts/{id}/zip. The only artifact paths in the
+# entire API are org and user quota counters. `actions/download-artifact` is no
+# substitute: inside a job it talks to the runner's artifact endpoint, which is
+# scoped to the CURRENT run by design. Same-run artifacts need no API at all,
+# which is why this is a `workflow_call`.
+#
+# UNPROVEN, AND THE FALLBACK IF IT BITES: `workflow_call` is verified only through
+# `forgejo-runner exec` (reusable workflow resolves, `with:` inputs arrive,
+# `needs:` ordering holds). exec does its OWN job planning with no server, while
+# the live path has Forgejo's server parse `jobs.<id>.uses`. If the server cannot,
+# fold these steps into matrix.yml as a plain `package` job with the identical
+# gates -- the logic is unchanged, only the file boundary is lost.
+
+on:
+  # NO other trigger, deliberately. There is nothing to package outside a run that
+  # just built something, and a `workflow_dispatch` here would produce an empty
+  # job that looks like it worked. The gating lives in the CALLER (matrix.yml):
+  # release runs are dispatch-only and require every matrix leg green.
+  workflow_call:
+    inputs:
+      # Passed through purely so the packaged filenames can carry it. Not read
+      # from the tree, because this job deliberately does not check the tree out.
+      run_number:
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: package-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
-  release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    permissions: write-all
-    outputs:
-      timestamp: ${{ steps.get-timestamp.outputs.time }}
-    steps:
-      - name: Get build timestamp
-        id: get-timestamp
-        run: |
-          echo "time=$(/bin/date -u "+%Y-%m-%d-%H%M")" >> $GITHUB_OUTPUT
-      - name: Generate environmental variables
-        id: generate_env_vars
-        run: |
-          echo "tag_name=cdda-experimental-${{ steps.get-timestamp.outputs.time }}" >> $GITHUB_OUTPUT
-          echo "release_name=Cataclysm: Salvaged experimental build ${{ steps.get-timestamp.outputs.time }}" >> $GITHUB_OUTPUT
-      - uses: actions/checkout@v4
-      - name: Generate Release Notes
-        id: generate-release-notes
-        run: |
-          npm install @actions/github
-          node build-scripts/generate-release-notes.js '${{ secrets.GITHUB_TOKEN }}' '${{ steps.generate_env_vars.outputs.tag_name }}' "$(git log -1 --format='%H')" > notes.txt
-      - run: |
-          gh release create ${{ steps.generate_env_vars.outputs.tag_name }} --notes-file notes.txt --prerelease --title "${{ steps.generate_env_vars.outputs.release_name }}" --target "$(git log -1 --format='%H')"
+  package:
+    name: package release artifacts
+    runs-on: slvg-ci
 
-  builds:
-    needs: release
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: Windows Tiles x64 MSVC
-            artifact: windows-tiles-x64-msvc
-            arch: x64
-            os: windows-2019
-            mxe: none
-            ext: zip
-            content: application/zip
-            sound: 0
-          - name: Windows Tiles Sounds x64 MSVC
-            artifact: windows-tiles-sounds-x64-msvc
-            arch: x64
-            os: windows-2019
-            mxe: none
-            ext: zip
-            content: application/zip
-            sound: 1
-          - name: Windows Tiles x64
-            mxe: x86_64
-            libbacktrace: 1
-            artifact: windows-tiles-x64
-            os: ubuntu-latest
-            ext: zip
-            content: application/zip
-            sound: 0
-          - name: Windows Tiles Sounds x64
-            mxe: x86_64
-            libbacktrace: 1
-            artifact: windows-tiles-sounds-x64
-            os: ubuntu-latest
-            ext: zip
-            content: application/zip
-            sound: 1
-          - name: Linux Tiles x64
-            os: ubuntu-20.04
-            mxe: none
-            android: none
-            libbacktrace: 1
-            tiles: 1
-            sound: 0
-            artifact: linux-tiles-x64
-            ext: tar.gz
-            content: application/gzip
-          - name: Linux Tiles Sounds x64
-            os: ubuntu-20.04
-            mxe: none
-            android: none
-            libbacktrace: 1
-            tiles: 1
-            sound: 1
-            artifact: linux-tiles-sounds-x64
-            ext: tar.gz
-            content: application/gzip
-          - name: Linux Curses x64
-            os: ubuntu-20.04
-            mxe: none
-            android: none
-            libbacktrace: 1
-            tiles: 0
-            sound: 0
-            artifact: linux-curses-x64
-            ext: tar.gz
-            content: application/gzip
-          - name: macOS Curses Universal Binary (x64 and arm64)
-            os: macos-12
-            mxe: none
-            tiles: 0
-            sound: 0
-            artifact: osx-curses-universal
-            ext: dmg
-            content: application/x-apple-diskimage
-          - name: macOS Tiles Universal Binary (x64 and arm64)
-            os: macos-12
-            mxe: none
-            tiles: 1
-            sound: 0
-            artifact: osx-tiles-universal
-            ext: dmg
-            content: application/x-apple-diskimage
-          - name: Android x64
-            os: ubuntu-latest
-            mxe: none
-            android: arm64
-            artifact: android-x64
-            ext: apk
-            content: application/apk
-          - name: Android x32
-            os: ubuntu-latest
-            mxe: none
-            android: arm32
-            artifact: android-x32
-            ext: apk
-            content: application/apk 
-          - name: Android Bundle
-            os: ubuntu-latest
-            mxe: none
-            android: bundle
-            artifact: android-bundle
-            ext: aab
-            content: application/aap
-          - name: WebAssembly Bundle
-            os: ubuntu-latest
-            mxe: none
-            artifact: wasm
-            ext: zip
-            content: application/zip
-            sound: 0
-            wasm: true
-    name: ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
-    permissions: write-all
-    env:
-        ZSTD_CLEVEL: 17
+    # No compilation happens here -- this is unpack, repack, upload over ~400 MB.
+    # The bound exists to cap a hang, not because the work is slow.
+    timeout-minutes: 30
+
     steps:
-      - uses: actions/checkout@v4
+      # NO CHECKOUT, deliberately. Nothing here reads the source tree: the inputs
+      # are artifacts and the tools are in the image. Skipping it avoids a clone
+      # of a 12 GB repository to rename three files.
+
+      - name: fetch every artifact this run produced
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
         with:
-          fetch-tags: true
-      - name: Get soundpack
-        if: matrix.sound == 1
+          path: staged
+
+      # WHAT ARRIVES, AND WHY THE FAILURE ARTIFACTS ARE NOT A PROBLEM. Downloading
+      # with no `name:` fetches ALL artifacts into staged/<artifact-name>/. On a
+      # green run that is exactly the three bindist uploads -- every other upload
+      # in matrix.yml is `if: failure()`, so on the only runs that reach this job
+      # they do not exist. The loop below keys off an explicit id list rather than
+      # a glob, so an unexpected extra artifact is ignored rather than shipped.
+      - name: repackage into uniform, uniquely named zips
+        id: repack
         run: |
-          git clone --depth=1 --shallow-submodules --recurse-submodules https://github.com/Fris0uman/CDDA-Soundpacks '${{ github.workspace }}/CDDA-Soundpacks'
-          mv '${{ github.workspace }}/CDDA-Soundpacks/sound/CC-Sounds' '${{ github.workspace }}/data/sound'
-      - name: Install dependencies (windows msvc) (0/4)
-        if: runner.os == 'Windows'
-        uses: lukka/get-cmake@latest
-      - name: Install dependencies (windows msvc) (1/4)
-        if: runner.os == 'Windows'
-        uses: microsoft/setup-msbuild@v2
-      - name: Install dependencies (windows msvc) (2/4)
-        if: runner.os == 'Windows'
-        uses: lukka/run-vcpkg@v11
-        id: runvcpkg
+          set -euo pipefail
+
+          # THE ID -> PLAYER-FACING NAME MAP. Upstream moved off developer
+          # vocabulary and the names are much better for it: a player downloading
+          # a game should not have to know what "curses" or "tiles" means.
+          # Left column is matrix.yml's `id:`; right is what ships.
+          map_windows_graphics_sounds="windows-with-graphics-and-sounds-x64"
+          map_linux_graphics_sounds="linux-with-graphics-and-sounds-x64"
+          map_linux_terminal="linux-terminal-only-x64"
+
+          declare -A VARIANT=(
+            [debian-mingw-gcc-12]="$map_windows_graphics_sounds"
+            [debian-gcc-12-release]="$map_linux_graphics_sounds"
+            [debian-gcc-12-curses-release]="$map_linux_terminal"
+          )
+
+          mkdir -p out work
+
+          for id in "${!VARIANT[@]}"; do
+            variant="${VARIANT[$id]}"
+            src_dir="staged/cataclysm-slvg-${id}"
+
+            # A MISSING ARTIFACT IS A HARD FAILURE, NOT A SKIP. Reaching this job
+            # at all means every matrix leg went green, so a bindist output that
+            # is not here means the upload silently produced nothing -- exactly
+            # the case where a "package what we found" loop would publish a
+            # two-file release and look successful.
+            if [ ! -d "$src_dir" ]; then
+              echo "FATAL: no artifact directory for '$id' at $src_dir"
+              echo "  present:"; ls -1 staged 2>/dev/null | sed 's/^/    /'
+              exit 1
+            fi
+
+            archive="$( find "$src_dir" -maxdepth 1 -type f \
+                          \( -name 'cataclysm-slvg-*.tar.gz' -o -name 'cataclysm-slvg-*.zip' \) \
+                          | head -1 )"
+            [ -n "$archive" ] || { echo "FATAL: no bindist archive inside $src_dir"; ls -lR "$src_dir"; exit 1; }
+
+            # VERSION COMES FROM THE FILENAME, not from the tree. `make bindist`
+            # emits cataclysm-slvg-<VERSION>.<ext> -- BUILD_PREFIX is empty here
+            # because AUTO_BUILD_PREFIX is never set in CI (verified 2026-09-05;
+            # it is `ifdef`-guarded at Makefile:288), so the name is already clean
+            # and the version is the only variable part.
+            base="$( basename "$archive" )"
+            version="$( echo "$base" | sed -E 's/^cataclysm-slvg-(.+)\.(tar\.gz|zip)$/\1/' )"
+            [ -n "$version" ] && [ "$version" != "$base" ] \
+              || { echo "FATAL: could not read version out of '$base'"; exit 1; }
+
+            # ALL THREE MUST AGREE. They come from one matrix run so they always
+            # should -- which is exactly why a disagreement means something is
+            # wrong upstream of here (a stale artifact, a re-run mixing two runs)
+            # and must not be quietly resolved by whichever loop iteration ran
+            # last. Bash associative-array order is unspecified, so without this
+            # the "winner" would not even be predictable.
+            if [ -z "${VERSION_SEEN:-}" ]; then
+              VERSION_SEEN="$version"
+            elif [ "$version" != "$VERSION_SEEN" ]; then
+              echo "FATAL: artifacts disagree on version -- '$VERSION_SEEN' vs '$version' (from $base)"
+              exit 1
+            fi
+
+            name="cataclysm-slvg-${version}-${variant}"
+            rm -rf "work/$name" && mkdir -p "work/$name"
+
+            # NORMALISE THE INTERNAL LAYOUT -- the two formats disagree, and one of
+            # them is a trap. BINDIST_CMD tars with
+            # `--transform=s@^$(BINDIST_DIR)@cataclysm-slvg-$(VERSION)@`, so the
+            # tarball has a top-level directory. W32BINDIST_CMD does
+            # `cd $(BINDIST_DIR) && 7zz a ../x.zip *`, which has NONE: extracting
+            # the Windows zip scatters ~7,000 files into whatever directory the
+            # player is sitting in. Both are unpacked flat here and re-rooted
+            # under one directory named for the artifact, so all three behave the
+            # same and two of them cannot collide on extraction.
+            case "$archive" in
+              *.tar.gz) tar -xzf "$archive" -C "work/$name" --strip-components=1 ;;
+              *.zip)    7zz x -bso0 -bsp0 -o"work/$name" "$archive" >/dev/null ;;
+            esac
+
+            # 7-Zip's zip, -mx=9 deflate. NOT -t7z and NOT zip-with-LZMA:
+            # .7z is smaller (63.0 vs 74.1 MB measured) but is non-native on BOTH
+            # target platforms -- Win10 needs 7-Zip installed, most Linux desktops
+            # need p7zip -- and LZMA inside a .zip (method 14) cannot be read by
+            # Explorer or Info-ZIP `unzip`, which forfeits the exact property zip
+            # was chosen for. Deflate is the only setting that opens everywhere
+            # with no extra install (11.9b).
+            ( cd work && 7zz a -tzip -mx=9 -bso0 -bsp0 "../out/${name}.zip" "$name" >/dev/null )
+            echo "packaged ${name}.zip"
+          done
+
+          echo "version=${VERSION_SEEN}" >> "$GITHUB_OUTPUT"
+          echo
+          echo "=== release artifacts ==="
+          ls -lh out | tail -n +2
+
+          # THREE, ALWAYS. A release missing a platform should fail here rather
+          # than be noticed after publication.
+          n="$( find out -maxdepth 1 -name '*.zip' | wc -l )"
+          [ "$n" -eq 3 ] || { echo "FATAL: expected 3 artifacts, produced $n"; exit 1; }
+
+      # ONE ARTIFACT CONTAINING ALL THREE, not three artifacts. The forge zips
+      # every artifact on download, so a .zip uploaded alone arrives as a .zip
+      # inside a .zip. Bundling means the operator downloads once and unpacks once
+      # to get three files ready to attach, instead of repeating that three times.
+      - name: upload the release bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          vcpkgDirectory: '${{ runner.workspace }}/b/vcpkg'
-          vcpkgGitCommitId: '66444e13a86da7087ee24c342f91801cc6eb9877'
-      - name: Install dependencies (windows msvc) (3/4)
-        if: runner.os == 'Windows'
-        run: |
-          vcpkg integrate install --vcpkg-root '${{ runner.workspace }}\b\vcpkg'
-      - name: Install dependencies (windows msvc) (4/4)
-        if: runner.os == 'Windows'
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: mingw64
-          install: >-
-            gettext
-            make
-      - name: Install dependencies (windows mxe)
-        if: matrix.mxe != 'none'
-        run: |
-          sudo apt install gettext
-      - name: Install MXE
-        if: matrix.mxe != 'none'
-        run: |
-          curl -L -o mxe-${{ matrix.mxe }}.tar.xz https://github.com/BrettDong/MXE-GCC/releases/download/mxe-sdl-2-0-20/mxe-${{ matrix.mxe }}.tar.xz
-          curl -L -o mxe-${{ matrix.mxe }}.tar.xz.sha256 https://github.com/BrettDong/MXE-GCC/releases/download/mxe-sdl-2-0-20/mxe-${{ matrix.mxe }}.tar.xz.sha256
-          shasum -a 256 -c ./mxe-${{ matrix.mxe }}.tar.xz.sha256
-          sudo tar xJf mxe-${{ matrix.mxe }}.tar.xz -C /opt
-          curl -L -o SDL2-devel-2.26.2-mingw.tar.gz https://github.com/libsdl-org/SDL/releases/download/release-2.26.2/SDL2-devel-2.26.2-mingw.tar.gz
-          shasum -a 256 -c ./build-scripts/SDL2-devel-2.26.2-mingw.tar.gz.sha256
-          sudo tar -xzf SDL2-devel-2.26.2-mingw.tar.gz -C /opt/mxe/usr/${{ matrix.mxe }}-w64-mingw32.static.gcc12 --strip-components=2 SDL2-2.26.2/${{ matrix.mxe }}-w64-mingw32
-      - name: Install dependencies (Linux)
-        if: runner.os == 'Linux' && matrix.mxe == 'none' && matrix.android == 'none' && !matrix.wasm
-        run: |
-          sudo apt-get update
-          sudo apt-get install libsdl2-dev
-          git clone https://github.com/libsdl-org/SDL.git --branch release-2.0.20 --depth 1
-          cd SDL
-          mkdir build
-          cd build
-          ../configure
-          make -j$((`nproc`+0))
-          sudo make install
-          cp ../LICENSE.txt ${{ github.workspace }}/LICENSE-SDL.txt
-          sudo apt-get install libncursesw5-dev libsdl2-ttf-dev libsdl2-image-dev \
-            libsdl2-mixer-dev libpulse-dev ccache gettext parallel
-      - name: Install Emscripten (WebAssembly)
-        if: matrix.wasm
-        uses: mymindstorm/setup-emsdk@v13
-      - name: Install runtime dependencies (mac)
-        if: runner.os == 'macOS'
-        uses: BrettDong/setup-sdl2-frameworks@v2
-        with:
-          sdl2: latest
-          sdl2-ttf: latest
-          sdl2-image: latest
-          sdl2-mixer: latest
-      - name: Install build dependencies (mac)
-        if: runner.os == 'macOS'
-        run: |
-          HOMEBREW_NO_AUTO_UPDATE=yes HOMEBREW_NO_INSTALL_CLEANUP=yes brew install gettext ccache parallel dylibbundler
-          pip3 install dmgbuild biplist
-      - name: Create VERSION.TXT
-        shell: bash
-        run: |
-          cat >VERSION.txt <<EOL
-          build type: ${{ matrix.artifact }}
-          build number: ${{ needs.release.outputs.timestamp }}
-          commit sha: ${{ github.sha }}
-          commit url: https://github.com/${{ github.repository }}/commit/${{ github.sha }}
-          EOL
-      - name: Compile translations (windows)
-        if: runner.os == 'Windows'
-        shell: msys2 {0}
-        run: |
-          lang/compile_mo.sh all
-      - name: Build libbacktrace
-        if: matrix.libbacktrace == 1
-        run: |
-          git clone https://github.com/ianlancetaylor/libbacktrace.git
-          cd libbacktrace
-          git checkout 14818b7783eeb9a56c3f0fca78cefd3143f8c5f6
-          ./configure
-          make -j$((`nproc`+0))
-          cp LICENSE ${{ github.workspace }}/LICENSE-libbacktrace.txt
-          sudo make install
-      - name: Build CDDA (linux)
-        if: runner.os == 'Linux' && matrix.mxe == 'none' && matrix.android == 'none' && !matrix.wasm
-        run: |
-          make -j$((`nproc`+0)) TILES=${{ matrix.tiles }} SOUND=${{ matrix.tiles }} RELEASE=1 LOCALIZE=1 LANGUAGES=all BACKTRACE=1 LIBBACKTRACE=${{ matrix.libbacktrace }} PCH=0 bindist
-          mv cataclysmdda-0.I.tar.gz cdda-${{ matrix.artifact }}-${{ needs.release.outputs.timestamp }}.tar.gz
-      - name: Build CDDA (WebAssembly)
-        if: matrix.wasm && success()
-        run: |
-          ./build-scripts/build-emscripten.sh
-          ./build-scripts/prepare-web.sh
-          (cd build && zip ../cdda-${{ matrix.artifact }}-${{ needs.release.outputs.timestamp }}.${{ matrix.ext }} *)
-      - name: Build CDDA (windows mxe)
-        if: matrix.mxe != 'none'
-        env:
-          PLATFORM: /opt/mxe/usr/bin/${{ matrix.mxe }}-w64-mingw32.static.gcc12-
-        run: |
-          make -j$((`nproc`+0)) CROSS="${PLATFORM}" TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all BACKTRACE=1 LIBBACKTRACE=${{ matrix.libbacktrace }} PCH=0 bindist
-          mv cataclysmdda-0.I.zip cdda-${{ matrix.artifact }}-${{ needs.release.outputs.timestamp }}.zip
-      - name: Build CDDA (windows msvc)
-        if: runner.os == 'Windows'
-        env:
-          # Enable pretty backtraces
-          BACKTRACE: 1
-          SLVG_RELEASE_BUILD: 1
-          VCPKG_OVERLAY_TRIPLETS: ${{ github.workspace }}\.github\vcpkg_triplets
-        run: |
-          msbuild -m -p:Configuration=Release -p:Platform=${{ matrix.arch }} "-target:Cataclysm-vcpkg-static;JsonFormatter-vcpkg-static" msvc-full-features\Cataclysm-vcpkg-static.sln
-          .\build-scripts\windist.ps1
-          mv cataclysmdda-0.I.zip cdda-${{ matrix.artifact }}-${{ needs.release.outputs.timestamp }}.zip
-      - name: Build CDDA (osx)
-        if: runner.os == 'macOS'
-        run: |
-          make -j3 TILES=${{ matrix.tiles }} SOUND=${{ matrix.tiles }} RELEASE=1 LOCALIZE=1 LANGUAGES=all BACKTRACE=0 PCH=0 USE_HOME_DIR=1 FRAMEWORK=1 UNIVERSAL_BINARY=1 dmgdist
-          mv Cataclysm.dmg cdda-${{ matrix.artifact }}-${{ needs.release.outputs.timestamp }}.dmg
-      - name: Set up JDK 8 (android)
-        if: runner.os == 'Linux' && matrix.android != 'none' && matrix.mxe == 'none'
-        uses: actions/setup-java@v4
-        with:
-          java-version: '11'
-          distribution: 'adopt'   
-      - name: Setup Build and Dependencies (android)
-        if: runner.os == 'Linux' && matrix.android != 'none' && matrix.mxe == 'none'
-        run: |
-          sudo apt-get update
-          sudo apt-get install gettext          
-      - name: Build CDDA (android)
-        if: runner.os == 'Linux' && matrix.android != 'none' && matrix.mxe == 'none'
-        working-directory: ./android
-        run: |
-          echo "${{ secrets.KEYSTORE }}" > release.keystore.asc   
-          gpg -d --passphrase "${{ secrets.KEYSTORE_PASSWORD }}" --batch release.keystore.asc > app/release.keystore 
-          echo "${{ secrets.KEYSTORE_PROPERTIES }}" > keystore.properties.asc   
-          gpg -d --passphrase "${{ secrets.KEYSTORE_PASSWORD }}" --batch keystore.properties.asc > keystore.properties
-          export UPSTREAM_BUILD_NUMBER="$((11581 + ${{ github.run_number }}))"
-          chmod +x gradlew
-          if [ ${{ matrix.android }} = arm64 ]
-          then
-               ./gradlew -Pj=$((`nproc`+0)) -Pabi_arm_32=false assembleExperimentalRelease
-               mv ./app/build/outputs/apk/experimental/release/*.apk ../cdda-${{ matrix.artifact }}-${{ needs.release.outputs.timestamp }}.apk
-          elif [ ${{ matrix.android }} = arm32 ]
-          then
-               ./gradlew -Pj=$((`nproc`+0)) -Pabi_arm_64=false assembleExperimentalRelease
-               mv ./app/build/outputs/apk/experimental/release/*.apk ../cdda-${{ matrix.artifact }}-${{ needs.release.outputs.timestamp }}.apk 
-          elif [ ${{ matrix.android }} = bundle ]
-          then
-               ./gradlew -Pj=$((`nproc`+0)) bundleExperimentalRelease
-               mv ./app/build/outputs/bundle/experimentalRelease/*.aab ../cdda-${{ matrix.artifact }}-${{ needs.release.outputs.timestamp }}.aab     
-          fi
-      - run: |
-          gh release upload cdda-experimental-${{ needs.release.outputs.timestamp }} cdda-${{ matrix.artifact }}-${{ needs.release.outputs.timestamp }}.${{ matrix.ext }}
+          name: RELEASE-cataclysm-slvg-${{ steps.repack.outputs.version }}-${{ inputs.run_number }}
+          path: out/*.zip
+          if-no-files-found: error
+          # Long enough that a release is not lost to expiry while it is being
+          # written up, short enough that these do not accumulate on the pool.
+          retention-days: 30

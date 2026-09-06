@@ -39,20 +39,27 @@ name: General build matrix
 #   Ubuntu   g++-14        Curses   LTO=1, TEST_STAGE, MODS  YES
 #   Ubuntu   g++-14        Tiles    LTO=1, TESTS=0           -
 #   Ubuntu   clang++-21    Tiles    -                        -
+#   Debian   g++-12        Curses   LOCALIZE=1, bindist      launch  <- terminal release
 #   Debian   g++-12        Tiles+Snd bindist                 YES  <- Linux release, last
 #
-# ONE RUNNER, CAPACITY 1: all eight SERIALIZE, so ORDER IS EXECUTION ORDER. The
+# ONE RUNNER, CAPACITY 1: all nine SERIALIZE, so ORDER IS EXECUTION ORDER. The
 # Linux release candidate runs LAST, giving its artifact every other toolchain's
 # verdict behind it rather than in front. Parallelism exists only inside a job.
 #
-# TWO JOBS NOW CARRY `bindist`, AND THE ORDERING PROPERTY ONLY HOLDS FOR ONE OF
-# THEM. The MinGW job is 4th, so the Windows .zip is produced with three jobs'
-# verdicts behind it, not seven -- it is emitted before the sanitizer pair, the
-# LTO/ODR job and the release build have run. That is a deliberate trade, not an
-# oversight: moving MinGW last would put the two artifacts back-to-back and give
-# up the position where a cross-compile failure surfaces early and cheaply.
-# **Do not treat the Windows artifact as fully vetted until the whole matrix is
-# green** -- it is a candidate, and the run it came from is what qualifies it.
+# THREE JOBS NOW CARRY `bindist`, AND THE ORDERING PROPERTY HOLDS FOR ONLY ONE.
+# The MinGW job is 4th, so the Windows .zip is produced with three jobs' verdicts
+# behind it, not eight -- before the sanitizer pair, the LTO/ODR job and both
+# release builds have run. That is a deliberate trade, not an oversight: moving
+# MinGW last would bunch the artifacts together and give up the position where a
+# cross-compile failure surfaces early and cheaply.
+#
+# ORDER MATTERS MUCH LESS NOW THAT PACKAGING IS GATED. The `package` job requires
+# `needs.varied_builds.result == 'success'`, i.e. EVERY leg green, so no artifact can be
+# published with anything red behind it regardless of the position it was built
+# in. Order is now about how early a failure surfaces, not about what qualifies an
+# artifact. **Within a run, still do not treat any single artifact as vetted until
+# the whole matrix is green** -- the artifacts uploaded per-job are candidates;
+# only the `package` job's output is a release.
 #
 # COVERAGE, reading the table: each UI backend meets an old compiler and a new
 # one, and the 12,673 lines of TILES-conditional code are reached by LTO/ODR as
@@ -82,9 +89,22 @@ on:
 
   # Pull requests here happen only at release (experimental -> master), so the
   # matrix runs about once per release. Without dispatch, the first time any of
-  # these eight toolchains sees a change is months after it was written -- same
+  # these nine toolchains sees a change is months after it was written -- same
   # reasoning as clang-tidy.yml and syntax-check.yml.
   workflow_dispatch:
+    inputs:
+      # THE RELEASE SWITCH. Off by default so the common dispatch -- a toolchain
+      # check between releases, which is why this trigger exists at all -- stays
+      # cheap and produces nothing to publish.
+      #
+      # It is NOT redundant with the event gate on the `package` job. That gate
+      # stops PR runs from packaging; this one separates the two KINDS of manual
+      # run. Without it every check dispatch would also package, and the artifact
+      # would come from whatever commit happened to be checked.
+      release:
+        description: "Package release artifacts (all jobs must pass)"
+        type: boolean
+        default: false
 
 # Native concurrency, replacing upstream's TWO skip-duplicates jobs
 # (fkirc/skip-duplicate-actions@master -- a mutable branch ref, one of the four
@@ -355,6 +375,36 @@ jobs:
           # launch/package steps below are. bindist is the packaging step -- a
           # tree can build and test cleanly and still fail to package (missing
           # data file, bad path), and nothing else here would notice.
+          # THE TERMINAL-ONLY RELEASE BUILD (11.9b, artifact 3 of 3).
+          #
+          # A SEPARATE JOB, NOT `bindist: 1` ON debian-gcc-11-curses. That job
+          # sets `localize: 0` deliberately -- testing the LOCALIZE=0 path is its
+          # purpose -- so packaging it would ship a release WITH NO TRANSLATIONS.
+          # The flags a release needs and the flags that job exists to exercise
+          # are mutually exclusive, so they cannot be the same job.
+          #
+          # DEBIAN, NOT UBUNTU, AND THAT IS NOT INTERCHANGEABLE: slvg-ci-ubuntu
+          # carries glibc 2.39 against this image's 2.36, and 11.9 forbids it
+          # building a release for exactly that reason -- the artifact's floor is
+          # its build host's glibc. The Ubuntu curses job stays a TEST job.
+          #
+          # NO `run_tests`, deliberately. The suite is compiled from the same
+          # sources by the same g++-12 in the job below, and the ncurses backend
+          # is exercised under test by ubuntu-gcc-14-lto. Repeating a full suite
+          # here would add ~25 minutes to a serialized release run to re-answer a
+          # question two other jobs already answer. `launch` and `check_mods`
+          # still smoke-test THIS binary, which is the part not covered elsewhere.
+          - title: GCC 12, Debian, Curses, RELEASE
+            host: slvg-ci
+            compiler: g++-12
+            tiles: 0
+            sound: 0
+            localize: 1
+            launch: 1
+            check_mods: 1
+            bindist: 1
+            id: debian-gcc-12-curses-release
+
           - title: GCC 12, Debian, Tiles, Sound, RELEASE
             host: slvg-ci
             compiler: g++-12
@@ -725,3 +775,43 @@ jobs:
         path: tests/cata_test*
         if-no-files-found: ignore
         retention-days: 9
+
+  # RELEASE PACKAGING. Turns this run's three `bindist` outputs into three
+  # uniformly named .zip files for hand-attaching to a GitHub Release (11.9a
+  # "Option A": built here, published by hand, no credential on this box).
+  # release.yml holds the logic and explains itself; this is only the trigger.
+  package:
+    needs: varied_builds
+    uses: ./.github/workflows/release.yml
+    with:
+      run_number: ${{ github.run_number }}
+
+    # BOTH CONDITIONS ARE LOAD-BEARING AND GUARD DIFFERENT FAILURES.
+    #
+    # `inputs.release` -- a dispatch is normally a toolchain CHECK (the reason
+    # workflow_dispatch exists at all), and those must not produce release
+    # artifacts. `github.event_name` is checked alongside it because `inputs` is
+    # empty on a pull_request, and an unset boolean must not read as true.
+    #
+    # `needs.varied_builds.result == 'success'` -- for a MATRIX job this is 'success'
+    # only when EVERY leg passed, which is the property wanted: an artifact is
+    # published only from a wholly green run. `fail-fast: false` above matters
+    # here too, since it lets every leg report before this is evaluated, so a red
+    # run still yields a complete verdict rather than a truncated one.
+    #
+    # WHY NOT PACKAGE ON A PULL REQUEST, given PRs here happen only at release:
+    # a PR run builds the PRE-MERGE head, not the commit that lands on master,
+    # and re-fires on every `synchronize`/`ready_for_review`. Dispatching from
+    # master AFTER the merge is what makes the artifact provably the released
+    # commit, built once.
+    #
+    # TESTED 2026-09-05 through `forgejo-runner exec`, both directions -- a red
+    # leg SKIPS this job, an all-green run RUNS it. A gate verified in only one
+    # direction proves nothing, since "skipped" and "unreachable" look identical.
+    # Caveat: exec does its own planning with no server, so server-side
+    # `jobs.<id>.uses` support is UNPROVEN. If Forgejo cannot resolve it, inline
+    # release.yml's steps here as a normal job with this same `if:` -- the logic
+    # does not change, only the file boundary.
+    if: ${{ github.event_name == 'workflow_dispatch'
+            && inputs.release
+            && needs.varied_builds.result == 'success' }}

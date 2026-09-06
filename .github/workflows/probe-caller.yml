@@ -95,7 +95,10 @@ jobs:
           ls -l out
 
       - name: upload the artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        # v3.2.2-node20. The FIRST probe run (2026-09-06) pinned v4 and that is
+        # exactly what this probe was for: v4 raises GHESNotSupportedError on
+        # Forgejo and cannot run. Pin must stay identical to matrix.yml's.
+        uses: actions/upload-artifact@c6a3b2bd78b3985e4b2f15397fec357f0fd808de # v3.2.2-node20
         with:
           name: probe-artifact
           path: out/*
@@ -112,7 +115,9 @@ jobs:
     uses: ./.github/workflows/probe-callee.yml
     with:
       passed_text: ${{ inputs.text }}
-      # Deliberately stringified: workflow_call inputs are typed, and passing a
-      # boolean through as a string is the conservative form. If the real
-      # release.yml ever needs a boolean across this boundary, test that too.
-      passed_flag: ${{ inputs.flag && 'true' || 'false' }}
+      # Passed as a BOOLEAN to a boolean-typed input, deliberately. The earlier
+      # form was `${{ inputs.flag && 'true' || 'false' }}`, which relies on the
+      # expression engine's ternary idiom -- unproven on this forge, and a failure
+      # there would look like a workflow_call defect rather than an expression
+      # one. A probe must not introduce a failure mode of its own.
+      passed_flag: ${{ inputs.flag }}

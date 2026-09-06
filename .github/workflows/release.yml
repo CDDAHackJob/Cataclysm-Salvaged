@@ -83,7 +83,14 @@ jobs:
       # of a 12 GB repository to rename three files.
 
       - name: fetch every artifact this run produced
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
+        # v3, NOT v4 -- FORCED BY FORGEJO (measured 2026-09-06): v4 raises
+        # GHESNotSupportedError on this forge and cannot run at all. See the fuller
+        # note in matrix.yml. `-node20` over plain v3, which declares node16.
+        #
+        # BEHAVIOUR THIS STEP DEPENDS ON IS UNCHANGED BETWEEN v3 AND v4: with no
+        # `name:`, every artifact of the run lands in its own subdirectory under
+        # `path` -- which is what the repack loop below globs for.
+        uses: actions/download-artifact@ad191675b41f6a5b46da9a048cb6893812da158b # v3.1.0-node20
         with:
           path: staged
 
@@ -200,7 +207,8 @@ jobs:
       # inside a .zip. Bundling means the operator downloads once and unpacks once
       # to get three files ready to attach, instead of repeating that three times.
       - name: upload the release bundle
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        # v3, NOT v4 -- see the download step above and matrix.yml.
+        uses: actions/upload-artifact@c6a3b2bd78b3985e4b2f15397fec357f0fd808de # v3.2.2-node20
         with:
           name: RELEASE-cataclysm-slvg-${{ steps.repack.outputs.version }}-${{ inputs.run_number }}
           path: out/*.zip

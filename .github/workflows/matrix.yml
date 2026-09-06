@@ -538,6 +538,22 @@ jobs:
     - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       with:
         persist-credentials: false
+        # FETCH TAGS, OR THE VERSION IS SILENTLY LOST. checkout does not `git
+        # clone`; it runs `git init` + `git fetch --depth=1`, and passes
+        # `--no-tags` unless this is set. `make version` (Makefile:970) and the
+        # desync guard below both call `git describe --exact-match`, which then
+        # finds nothing EVEN WHEN THE TAG EXISTS on the built commit.
+        #
+        # Measured 2026-09-06 by modelling checkout's own init+fetch:
+        #   --no-tags  -> tags=0, "fatal: No names found, cannot describe anything"
+        #   --tags     -> tags=1, describe -> 0.1
+        #
+        # Consequence without it: a release build stamps a bare SHA instead of the
+        # version (silent, pre-existing), and the guard below now turns that into a
+        # hard FATAL rather than letting it ship. `fetch-depth` stays 1 -- only the
+        # tag refs are added, not history, so this does not become a full clone of
+        # a 12 GB repository on all nine jobs.
+        fetch-tags: true
 
     # NO CACHE STEP, A DECISION RATHER THAN AN OMISSION (2026-08-19). Upstream
     # persists ccache between runs via actions/cache. UNAVAILABLE HERE for a
@@ -712,6 +728,10 @@ jobs:
         # Read the EVALUATED value from make rather than grepping the assignment,
         # so this cannot drift from what the build actually uses.
         mk_ver="$( make -s --eval='__ver__:;@echo $(VERSION)' __ver__ 2>/dev/null )"
+        # An empty read means the Makefile could not be evaluated. Without this the
+        # comparison below would silently succeed against a tag that is also empty,
+        # or abort under `set -e` with no explanation of which half failed.
+        [ -n "$mk_ver" ] || { echo "FATAL: could not read VERSION from the Makefile"; exit 1; }
         # Same glob `make version` uses (Makefile:970). --exact-match means "a tag
         # ON this commit", which is the only kind that stamps a version at all.
         git_tag="$( git describe --tags --exact-match --match '[0-9A-Z]*.[0-9A-Z]*' 2>/dev/null || true )"
@@ -757,7 +777,16 @@ jobs:
     # is failure wreckage; this is the candidate itself.
     - name: upload the distributable
       if: ${{ matrix.bindist == 1 && success() }}
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      # v3, NOT v4 -- FORCED BY FORGEJO, measured 2026-09-06. upload-artifact@v4
+      # and download-artifact@v4 hard-FAIL on this forge:
+      #   GHESNotSupportedError: @actions/artifact v2.0.0+, upload-artifact@v4+ and
+      #   download-artifact@v4+ are not currently supported on GHES.
+      # v4 talks to GitHub's newer artifact backend; Forgejo implements the older
+      # protocol, and the action treats any non-dotcom API as GHES and refuses
+      # rather than falling back. This is not a version preference -- v4 cannot
+      # work here at all. The `-node20` variant is chosen over plain `v3` because
+      # plain v3 declares `using: node16` while this image ships node 24 (11.4d).
+      uses: actions/upload-artifact@c6a3b2bd78b3985e4b2f15397fec357f0fd808de # v3.2.2-node20
       with:
         name: cataclysm-slvg-${{ matrix.id }}
         path: |
@@ -804,7 +833,16 @@ jobs:
     # matrix, which costs hours on a single serialized runner.
     - name: upload test binary if failed
       if: failure()
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      # v3, NOT v4 -- FORCED BY FORGEJO, measured 2026-09-06. upload-artifact@v4
+      # and download-artifact@v4 hard-FAIL on this forge:
+      #   GHESNotSupportedError: @actions/artifact v2.0.0+, upload-artifact@v4+ and
+      #   download-artifact@v4+ are not currently supported on GHES.
+      # v4 talks to GitHub's newer artifact backend; Forgejo implements the older
+      # protocol, and the action treats any non-dotcom API as GHES and refuses
+      # rather than falling back. This is not a version preference -- v4 cannot
+      # work here at all. The `-node20` variant is chosen over plain `v3` because
+      # plain v3 declares `using: node16` while this image ships node 24 (11.4d).
+      uses: actions/upload-artifact@c6a3b2bd78b3985e4b2f15397fec357f0fd808de # v3.2.2-node20
       with:
         name: cata_test-${{ matrix.id }}
         path: tests/cata_test*

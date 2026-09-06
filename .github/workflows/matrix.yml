@@ -701,6 +701,41 @@ jobs:
       if: ${{ matrix.bindist == 1 }}
       run: |
         set -eu
+
+        # VERSION DESYNC GUARD (11.9c). Two INDEPENDENT places carry the version and
+        # nothing else reconciles them: `Makefile:140` names the ARTIFACT
+        # (BINDIST uses $(VERSION), never git describe), while the git TAG stamps
+        # what the binary reports in-game (`make version` -> src/version.h). Set
+        # them differently and you publish `cataclysm-slvg-0.4.zip` containing a
+        # binary that says `0.4.1` -- wrong in a way only a player would notice.
+        #
+        # Read the EVALUATED value from make rather than grepping the assignment,
+        # so this cannot drift from what the build actually uses.
+        mk_ver="$( make -s --eval='__ver__:;@echo $(VERSION)' __ver__ 2>/dev/null )"
+        # Same glob `make version` uses (Makefile:970). --exact-match means "a tag
+        # ON this commit", which is the only kind that stamps a version at all.
+        git_tag="$( git describe --tags --exact-match --match '[0-9A-Z]*.[0-9A-Z]*' 2>/dev/null || true )"
+
+        if [ -n "$git_tag" ]; then
+          [ "$git_tag" = "$mk_ver" ] || {
+            echo "FATAL: version desync -- git tag '$git_tag' != Makefile VERSION '$mk_ver'"
+            echo "  The artifact would be named for '$mk_ver' and report '$git_tag' in-game."
+            echo "  Fix Makefile:140 or re-tag, then rebuild; do not publish this."
+            exit 1
+          }
+          echo "version check: tag '$git_tag' == Makefile VERSION '$mk_ver'"
+        elif [ "${{ inputs.release }}" = "true" ]; then
+          # A release run with no tag is the sequencing trap from 11.9c: `make
+          # version` has already run, so the binary is stamped with a bare SHA and
+          # tagging afterwards cannot fix this artifact -- it needs a rebuild.
+          echo "FATAL: release build with NO version tag on this commit."
+          echo "  Tag the commit '$( git rev-parse --short HEAD )' as '$mk_ver' first, then re-run."
+          exit 1
+        else
+          echo "no version tag (dev build): artifact will be named '$mk_ver',"
+          echo "  binary stamped with a bare SHA. Expected outside a release run."
+        fi
+
         # VERSION.txt IS AN UNDECLARED PREREQUISITE OF `make bindist`: it is in
         # BINDIST_EXTRAS (Makefile:527) but NOTHING in the Makefile builds it, so
         # bindist dies "No rule to make target 'VERSION.txt'" -- measured
